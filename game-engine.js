@@ -269,7 +269,7 @@
     return Math.floor(Math.random() * 6) + 1;
   }
 
-  function applyRoll(game, die) {
+  function applyRoll(game, die, options = {}) {
     if (!validInteger(die, 1, 6)) throw new RangeError("A die roll must be an integer from 1 to 6.");
     if (game.winner !== null) throw new Error("This game has already finished.");
     const board = BOARDS[game.boardIndex];
@@ -286,7 +286,10 @@
       to = landed;
       type = "move";
       if (board.l[landed]) { to = board.l[landed]; type = "ladder"; }
-      else if (board.s[landed]) { to = board.s[landed]; type = "snake"; }
+      else if (board.s[landed]) {
+        if (options.riddleRescued === true) { to = landed; type = "riddle"; }
+        else { to = board.s[landed]; type = "snake"; }
+      }
       if (type === "ladder" || type === "snake") jump = { type, from: landed, to };
       if (to === 100) type = "win";
     }
@@ -342,7 +345,7 @@
         const prior = createGame({ boardIndex: saved.boardIndex });
         prior.turn = entry.player;
         prior.players[entry.player].position = entry.from;
-        const expected = applyRoll(prior, entry.die).entry;
+        const expected = applyRoll(prior, entry.die, { riddleRescued: entry.type === "riddle" }).entry;
         if (expected.landed !== entry.landed || expected.to !== entry.to || expected.type !== entry.type) throw new Error("Invalid move.");
         return { sequence: entry.sequence, player: entry.player, die: entry.die, from: entry.from, landed: entry.landed, to: entry.to, type: entry.type };
       });

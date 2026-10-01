@@ -87,6 +87,21 @@ test("landing on a snake slides to its tail", () => {
   assert.equal(result.state.players[0].slides, 1);
 });
 
+test("a solved snake haiku keeps the player at the head and survives save restoration", () => {
+  let game = Game.createGame();
+  for (const die of [6, 1, 6, 1, 5, 1]) game = Game.applyRoll(game, die).state;
+  assert.equal(game.players[0].position, 18);
+  assert.equal(game.turn, 0);
+  const rescued = Game.applyRoll(game, 1, { riddleRescued: true });
+  assert.equal(rescued.entry.type, "riddle");
+  assert.equal(rescued.entry.landed, 19);
+  assert.equal(rescued.state.players[0].position, 19);
+  assert.equal(rescued.state.players[0].slides, 0);
+  assert.equal(rescued.state.turn, 1);
+  assert.equal(rescued.jump, null);
+  assert.deepEqual(Game.restoreGame(JSON.parse(JSON.stringify(rescued.state))), rescued.state);
+});
+
 test("passing a ladder or snake does not trigger it", () => {
   const pastLadder = Game.applyRoll(at(8), 2);
   assert.equal(pastLadder.state.players[0].position, 10);

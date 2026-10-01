@@ -120,9 +120,90 @@ test("ladders and snakes reach their actual endpoints", async ({ page }) => {
   await setPosition(page, 18);
   await face(page, 1);
   await page.locator("#roll").click();
+  await expect(page.locator("#snake-dialog")).toBeVisible();
+  await page.locator("#snake-classic-slide").click();
   await expect(page.locator("#move-count")).toHaveText("1 move");
   await expect(page.locator("#player-position-0")).toHaveText("05");
   await expect(page.locator("#activity")).toContainText("Slid 19 → 5");
+});
+
+test("a human can solve a Gemini haiku and stay on a snake's head", async ({ page }) => {
+  await setPosition(page, 18);
+  await face(page, 1);
+  await page.route("**/api/riddles", route => route.fulfill({
+    status: 201, contentType: "application/json",
+    body: JSON.stringify({ id: "test-haiku", haiku: "Silver moon at night\nSoftly lights the sleeping sea\nTides pull at the shore" }),
+  }));
+  await page.route("**/api/riddles/test-haiku/answer", route => {
+    expect(JSON.parse(route.request().postData()).answer).toBe("moon");
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ correct: true }) });
+  });
+  await page.locator("#roll").click();
+  await expect(page.locator("#snake-dialog")).toBeVisible();
+  await expect(page.locator("#snake-choice-copy")).toContainText("head at 19");
+  await page.locator("#snake-riddle-start").click();
+  await expect(page.locator("#snake-haiku")).toContainText("Silver moon at night");
+  await page.locator("#snake-riddle-answer").fill("moon");
+  await page.locator("#snake-riddle-submit").click();
+  await expect(page.locator("#snake-dialog")).toBeHidden();
+  await expect(page.locator("#player-position-0")).toHaveText("19");
+  const state = await savedGame(page);
+  expect(state.players[0].slides).toBe(0);
+  expect(state.history[0].type).toBe("riddle");
+  await expect(page.locator("#activity")).toContainText("Solved a haiku at 19");
+});
+
+test("an incorrect Gemini answer sends the human down the classic snake", async ({ page }) => {
+  await setPosition(page, 18);
+  await face(page, 1);
+  await page.route("**/api/riddles", route => route.fulfill({
+    status: 201, contentType: "application/json",
+    body: JSON.stringify({ id: "wrong-haiku", haiku: "Silver moon at night\nSoftly lights the sleeping sea\nTides pull at the shore" }),
+  }));
+  await page.route("**/api/riddles/wrong-haiku/answer", route => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ correct: false, answer: "moon" }),
+  }));
+  await page.locator("#roll").click();
+  await page.locator("#snake-riddle-start").click();
+  await page.locator("#snake-riddle-answer").fill("sun");
+  await page.locator("#snake-riddle-submit").click();
+  await expect(page.locator("#player-position-0")).toHaveText("05");
+  expect((await savedGame(page)).history[0].type).toBe("snake");
+});
+
+test("Gemini outages leave the classic snake slide available", async ({ page }) => {
+  await setPosition(page, 18);
+  await face(page, 1);
+  await page.route("**/api/riddles", route => route.fulfill({
+    status: 503, contentType: "application/json",
+    body: JSON.stringify({ error: "Gemini is not configured." }),
+  }));
+  await page.locator("#roll").click();
+  await page.locator("#snake-riddle-start").click();
+  await expect(page.locator("#snake-choice-feedback")).toContainText("not configured");
+  await page.locator("#snake-classic-slide").click();
+  await expect(page.locator("#player-position-0")).toHaveText("05");
+});
+
+test("Fern takes the classic snake slide without opening a riddle", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.crypto.getRandomValues = values => { values[0] = 0; return values; };
+  });
+  await page.evaluate(key => {
+    let game = SnakeLadder.createGame({ mode: "computer", names: ["Player 1"] });
+    for (const die of [1, 6, 1, 6, 1, 5, 1]) game = SnakeLadder.applyRoll(game, die).state;
+    const saved = JSON.parse(localStorage.getItem(key));
+    saved.game = game;
+    localStorage.setItem(key, JSON.stringify(saved));
+  }, SAVE_KEY);
+  await page.reload();
+  await page.locator("#menu-play").click();
+  await page.locator("#menu-continue").click();
+  await expect(page.locator("#mode-label")).toHaveText("Playing with Fern");
+  await expect(page.locator("#player-position-1")).toHaveText("05", { timeout: 10000 });
+  await expect(page.locator("#snake-dialog")).toBeHidden();
+  expect((await savedGame(page)).history[0].type).toBe("snake");
+  expect((await savedGame(page)).players[1].slides).toBe(1);
 });
 
 test("overshooting stays put, and an exact roll wins with a restart", async ({ page }) => {
@@ -843,6 +924,17 @@ for (const size of [
     await fullyInView(page, "#newgame");
     await fullyInView(page, "#players");
     await fullyInView(page, "#change-board");
+    await noScroll(page);
+    await page.locator("#snake-dialog").evaluate(dialog => {
+      document.getElementById("snake-choice-view").hidden = true;
+      document.getElementById("snake-riddle-view").hidden = false;
+      document.getElementById("snake-haiku").textContent = ["Silver moon at night", "Softly lights the sleeping sea", "Tides pull at the shore"].join(String.fromCharCode(10));
+      dialog.showModal();
+    });
+    await fullyInView(page, "#snake-dialog");
+    await fullyInView(page, "#snake-riddle-submit");
+    expect(await page.locator("#snake-dialog").evaluate(element => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
+    await page.locator("#snake-dialog").evaluate(dialog => dialog.close());
     await noScroll(page);
     for (const [opener, dialog, lastControl] of [
       ["#how-to-play", "#rules-dialog", "#rules-dialog .primary-button"],

@@ -211,7 +211,7 @@
     <ol class="rules-list">
       <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><div><h3>Roll & wander</h3><p>Both players start on square 1. Take turns rolling and moving forward. A six is just a six — no extra turn.</p></div></li>
       <li><span class="rule-icon ladder-rule"><svg class="icon" aria-hidden="true"><use href="#i-ladder"/></svg></span><div><h3>Enjoy the little climbs</h3><p>Land at the foot of a ladder and go straight to the top. A lucky shortcut!</p></div></li>
-      <li><span class="rule-icon snake-rule"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg></span><div><h3>Take the slides in stride</h3><p>Land on a snake’s head and slide down to its tail. There’s always another roll.</p></div></li>
+      <li><span class="rule-icon snake-rule"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg></span><div><h3>Take the slides in stride</h3><p>Slide to the tail, or solve a haiku to stay on the head. Fern always takes the classic slide.</p></div></li>
       <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg></span><div><h3>Finish just right</h3><p>You need an exact roll to reach 100. Roll too high? Stay put and try on your next turn.</p></div></li>
     </ol><button class="primary-button full-width" data-close-dialog>Got it. Let’s roll.<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
   </dialog>
@@ -238,6 +238,32 @@
       <p class="setup-note" id="setup-note">You’ll play on The Greenhouse. Your current game will be replaced.</p>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close-dialog>Not yet</button><button class="primary-button" type="submit">Start playing<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
     </form>
+  </dialog>
+
+  <dialog id="snake-dialog" class="dialog snake-dialog" aria-labelledby="snake-choice-title">
+    <button class="icon-button dialog-close" id="snake-close" aria-label="Take the classic snake slide"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <div id="snake-choice-view">
+      <p class="eyebrow">SNAKE AHEAD</p>
+      <h2 id="snake-choice-title">A twist in the trail.</h2>
+      <p class="dialog-intro" id="snake-choice-copy">You landed on a snake’s head. Take the classic slide, or try a haiku riddle to stay on this square.</p>
+      <div class="snake-choice-actions">
+        <button class="secondary-button" id="snake-classic-slide">Take the slide</button>
+        <button class="primary-button" id="snake-riddle-start"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"/></svg>Try a Gemini haiku</button>
+      </div>
+      <p class="snake-riddle-note">Solve it correctly to stay on the snake’s head. A wrong answer or a skip sends you to the tail.</p>
+      <p class="snake-riddle-feedback" id="snake-choice-feedback" role="status" aria-live="polite"></p>
+    </div>
+    <div id="snake-riddle-view" hidden>
+      <p class="eyebrow">A LITTLE HAIKU RIDDLE</p>
+      <h2 id="snake-riddle-title">What am I?</h2>
+      <pre class="snake-haiku" id="snake-haiku" aria-label="Riddle in haiku form"></pre>
+      <form class="snake-riddle-form" id="snake-riddle-form">
+        <label for="snake-riddle-answer">Your answer</label>
+        <div class="snake-riddle-answer-row"><input id="snake-riddle-answer" name="answer" maxlength="60" autocomplete="off" required><button class="primary-button" id="snake-riddle-submit" type="submit">Answer</button></div>
+      </form>
+      <p class="snake-riddle-feedback" id="snake-riddle-feedback" role="status" aria-live="polite"></p>
+      <button class="text-button snake-riddle-skip" id="snake-riddle-skip">Skip and take the slide</button>
+    </div>
   </dialog>
 
   <dialog id="win-dialog" class="dialog win-dialog" aria-labelledby="win-title">

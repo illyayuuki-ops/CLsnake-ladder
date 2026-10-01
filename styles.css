@@ -901,6 +901,37 @@ kbd { color: #dce5ff; border-color: rgba(255, 255, 255, .22); background: rgba(2
   .board-card { grid-column: 2; grid-row: 1; }
   .game-sidebar { grid-column: 3; grid-row: 1; }
 }
+.activity-symbol.is-riddle { color: #d8c4ff; background: rgba(167, 139, 250, .16); }
+.snake-dialog { width: min(460px, calc(100% - 24px)); }
+.snake-dialog h2 { padding-right: 26px; }
+.snake-choice-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 17px 0 8px; }
+.snake-choice-actions button { min-height: 44px; padding: 9px 10px; font-size: 11px; }
+#snake-riddle-start { color: #08122b; }
+.snake-riddle-note, .snake-riddle-feedback { color: #aab7d5; font-size: 10px; line-height: 1.5; text-align: center; }
+.snake-riddle-note { margin-top: 9px; }
+.snake-riddle-feedback { min-height: 1.4em; margin: 7px 0; }
+.snake-haiku { margin: 13px 0 15px; padding: 12px 10px; border: 1px solid rgba(255, 255, 255, .14); border-radius: 13px; background: rgba(255, 255, 255, .055); color: #f1f3ff; font-family: inherit; font-size: 16px; font-weight: 550; line-height: 1.6; text-align: center; white-space: pre-line; }
+.snake-riddle-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+.snake-riddle-form label { color: #c4cee8; font-size: 10px; font-weight: 600; }
+.snake-riddle-answer-row { display: flex; gap: 8px; width: 100%; min-width: 0; }
+.snake-riddle-answer-row input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 9px; color: #f2f4ff; background: rgba(255, 255, 255, .07); }
+.snake-riddle-answer-row input:focus-visible { outline: 3px solid #8ab8ff; outline-offset: 2px; }
+#snake-riddle-submit { min-height: 39px; padding: 8px 13px; }
+.snake-riddle-skip { display: flex; justify-content: center; margin: 8px auto 0; color: #c4cee8; font-size: 10px; }
+@media (max-width: 420px) {
+  .snake-choice-actions { grid-template-columns: 1fr; gap: 7px; margin: 12px 0 7px; }
+  .snake-choice-actions button { min-height: 39px; }
+  .snake-haiku { margin: 9px 0 10px; padding: 9px; font-size: 15px; }
+}
+@media (max-height: 520px) {
+  .snake-dialog { padding: 18px; }
+  .snake-dialog > .eyebrow { margin-bottom: 4px; }
+  .snake-choice-actions { margin: 10px 0 6px; gap: 6px; }
+  .snake-choice-actions button { min-height: 37px; }
+  .snake-haiku { margin: 8px 0 9px; padding: 8px; font-size: 14px; line-height: 1.45; }
+  .snake-riddle-feedback { margin: 4px 0; }
+  .snake-riddle-skip { margin-top: 4px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .board-surface, .board-preview img { transition: none !important; }
 }

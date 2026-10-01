@@ -14,13 +14,17 @@ npm start
 
 Then visit **http://localhost:5173**. Node 18+ is needed for the server, but the game itself has no runtime dependencies or build step. The original `snakes-and-ladders-2-5d-20-boards.html` entry point works too. Keep all 20 `snakes-and-ladders-board-XX.jpg` files, the JavaScript, CSS, and `assets` folder alongside the HTML files when copying the game.
 
-All fonts, illustrations, and artwork are local. Local and computer games need no internet connection once downloaded. Browser storage policies for `file://` vary; use the local server for reliable saved progress.
+All fonts, illustrations, and artwork are local. Local and Fern games need no internet connection unless a player chooses the Gemini haiku challenge. Browser storage policies for `file://` vary; use the local server for reliable saved progress and Gemini riddles.
 
 ## Online rooms
 
-Online play needs the Node server to be running and reachable by both players. Choose **Play → Online → Create a room**, then share the five-character code or use **Copy invite link**. The invite link opens the online screen with the code filled in; your friend can press **Join**. Both devices must use the same server address—`localhost` only works on the device running the server. A static-only host can serve local and Fern games, but online rooms require the included server and its `/api/rooms` endpoint.
+Online play needs the Node server to be running and reachable by both players. Choose **Play → Online → Create a room**, then share the five-character code or use **Copy invite link**. The invite link opens the online screen with the code filled in; your friend can press **Join**. Both devices must use the same server address—`localhost` only works on the device running the server. A static-only host can serve classic local and Fern games, but online rooms and Gemini riddles require the included server (`/api/rooms` and `/api/riddles`).
 
-The server owns the dice rolls and enforces turns. Room state is kept in server memory (not a database), expires after 45 minutes without activity, and is lost if the server restarts. The browser saves local games and settings on that device; it also remembers the room code and seat so a player can try to rejoin. There are no accounts or third-party network calls.
+The server owns the dice rolls and enforces turns. Room state is kept in server memory (not a database), expires after 45 minutes without activity, and is lost if the server restarts. The browser saves local games and settings on that device; it also remembers the room code and seat so a player can try to rejoin. There are no accounts. If someone chooses a haiku challenge, the server sends the riddle prompt to Google Gemini; the API key is never sent to the browser.
+
+### Gemini haiku riddles
+
+To enable the optional human-player challenge, set `GEMINI_API_KEY` in the server environment before running `npm start`. The key stays on the server. `GEMINI_MODEL` can optionally select another supported Gemini model. On a snake, a human may take the classic slide or request a three-line haiku riddle; a correct answer keeps them on the snake’s head, while an incorrect answer or skipping sends them to the tail. Fern always takes the classic slide. If Gemini is not configured or is unavailable, the classic slide remains available.
 
 ## What’s included
 
@@ -37,7 +41,7 @@ The server owns the dice rolls and enforces turns. Room state is kept in server 
 
 ## Rules & controls
 
-Both players start on **square 1**. Take turns rolling. A ladder’s foot sends you up; a snake’s head sends you down. Only **landing** on a path triggers it. Reach **100 with an exact roll** to win. Overshooting means staying put, and rolling six does **not** give an extra turn.
+Both players start on **square 1**. Take turns rolling. A ladder’s foot sends you up; a snake’s head offers a choice: slide to its tail or solve a Gemini haiku to stay on the head. Wrong answers and skips slide down, while Fern always uses the classic slide. Only **landing** on a path triggers it. Reach **100 with an exact roll** to win. Overshooting means staying put, and rolling six does **not** give an extra turn.
 
 - Click **Roll the dice** or press **Space** (outside a form or dialog).
 - **Start a new game** changes player names, game mode, and animation speed. Canceling keeps the current game.
@@ -48,7 +52,7 @@ Both players start on **square 1**. Take turns rolling. A ladder’s foot sends 
 ## Development & tests
 
 ```sh
-npm test                 # Dependency-free engine tests, including simulated games on all 20 boards
+npm test                 # Engine tests plus mocked Gemini and online-room server tests
 npm ci
 npx playwright install chromium
 npm run test:browser -- --workers=1

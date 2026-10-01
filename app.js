@@ -53,6 +53,9 @@
   let onlinePoll = null;
   let pollAbort = null;
   let onlineEntered = false;
+  let snakePrompt = null;
+  let riddleChallenge = null;
+  let onlineSnakePromptId = null;
 
   function loadSave() {
     try {
@@ -312,9 +315,9 @@
   function updateControls() {
     const computerTurn = !online && game.mode === "computer" && game.turn === 1 && game.winner === null;
     const waitingRoom = Boolean(online && !onlineReady());
-    const waitingTurn = Boolean(online && onlineReady() && game.turn !== online.player);
+    const waitingTurn = Boolean(online && onlineReady() && (game.turn !== online.player || online.pending));
     $("roll").disabled = busy || computerTurn || waitingRoom || waitingTurn || artworkState !== "ready";
-    $("roll-label").textContent = busy ? (computerTurn ? "Fern is rolling…" : "Rolling…") : artworkState === "loading" ? "Loading…" : artworkState === "error" ? "Picture error" : waitingRoom ? "Waiting for a player…" : waitingTurn ? `${game.players[game.turn].name}’s turn` : game.winner !== null ? "Play again" : computerTurn ? "Fern’s turn" : "Roll the dice";
+    $("roll-label").textContent = busy ? (computerTurn ? "Fern is rolling…" : "Rolling…") : artworkState === "loading" ? "Loading…" : artworkState === "error" ? "Picture error" : waitingRoom ? "Waiting for a player…" : online?.pending ? "Resolve the snake riddle…" : waitingTurn ? `${game.players[game.turn].name}’s turn` : game.winner !== null ? "Play again" : computerTurn ? "Fern’s turn" : "Roll the dice";
     ["newgame", "change-board", "edit-players"].forEach(id => { $(id).disabled = busy || Boolean(online); });
     ["mode-button", "how-to-play"].forEach(id => { $(id).disabled = busy; });
     ["show-ladders", "show-snakes"].forEach(id => { $(id).disabled = busy || artworkState !== "ready"; });
@@ -332,6 +335,7 @@
   function describeEntry(entry) {
     if (entry.type === "ladder") return `Climbed ${entry.landed} → ${entry.to}`;
     if (entry.type === "snake") return `Slid ${entry.landed} → ${entry.to}`;
+    if (entry.type === "riddle") return `Solved a haiku at ${entry.landed}`;
     if (entry.type === "overshoot") return `Too high — stayed on ${entry.from}`;
     if (entry.type === "win") return "Reached 100. A lovely finish!";
     return `Moved ${entry.from} → ${entry.to}`;
@@ -349,8 +353,8 @@
     game.history.slice(0, 3).forEach(entry => {
       const item = document.createElement("li");
       item.className = `activity-item${entry.player === 1 ? " player-two" : ""}`;
-      const symbol = entry.type === "snake" ? "snake" : entry.type === "ladder" ? "ladder" : entry.type === "win" ? "flag" : entry.type === "overshoot" ? "refresh" : "arrow";
-      item.innerHTML = `<span class="mini-die" aria-label="Rolled ${entry.die}">${entry.die}</span><div class="activity-details"><strong></strong><p></p></div><span class="activity-symbol ${entry.type === "snake" ? "is-snake" : ""}">${icon(symbol)}</span>`;
+      const symbol = entry.type === "riddle" ? "sparkle" : entry.type === "snake" ? "snake" : entry.type === "ladder" ? "ladder" : entry.type === "win" ? "flag" : entry.type === "overshoot" ? "refresh" : "arrow";
+      item.innerHTML = `<span class="mini-die" aria-label="Rolled ${entry.die}">${entry.die}</span><div class="activity-details"><strong></strong><p></p></div><span class="activity-symbol ${entry.type === "snake" ? "is-snake" : entry.type === "riddle" ? "is-riddle" : ""}">${icon(symbol)}</span>`;
       // Player names are always text, never executable markup.
       item.querySelector("strong").textContent = game.players[entry.player].name;
       item.querySelector("p").textContent = describeEntry(entry);
@@ -489,6 +493,7 @@
     if (entry.type === "win") return `${name} reached 100. What a lovely finish!`;
     if (entry.type === "ladder") return `A lucky little climb! ${name}: ${entry.landed} → ${entry.to}. ${next}`;
     if (entry.type === "snake") return `A twist in the trail. ${name} slid ${entry.landed} → ${entry.to}. ${next}`;
+    if (entry.type === "riddle") return `${name} solved the haiku and stayed on ${entry.landed}. ${next}`;
     if (entry.type === "overshoot") return `${name} rolled ${entry.die}, but needs ${100 - entry.from} to finish. Staying on ${entry.from}. ${next}`;
     return `${name} rolled ${entry.die} and reached square ${entry.to}. ${next}`;
   }
@@ -569,7 +574,7 @@
   }
 
   function adoptRoom(data, message) {
-    online = { code: data.code, player: data.player, version: data.version, seats: [...data.seats], names: [...data.names] };
+    online = { code: data.code, player: data.player, version: data.version, seats: [...data.seats], names: [...data.names], pending: data.pending || null };
     savedOnline = { code: data.code, player: data.player };
     onlineEntered = false;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
@@ -638,6 +643,7 @@
     render();
     save();
     status(onlineReady() ? `${game.players[game.turn].name} starts. ${onlineMyTurn() ? "Your roll!" : "Waiting for your friend…"}` : "Waiting for another player to join…");
+    if (online?.pending) handleOnlineSnakePending(online.pending);
   }
 
   async function copyInvite() {
@@ -655,7 +661,7 @@
     if (entry && animate && state.totalRolls === game.totalRolls + 1 && entry.player === game.turn) {
       const index = entry.player;
       const name = state.players[index].name;
-      const result = Game.applyRoll(game, entry.die);
+      const result = Game.applyRoll(game, entry.die, { riddleRescued: entry.type === "riddle" });
       const epoch = gameEpoch;
       busy = true;
       render();
@@ -685,19 +691,23 @@
 
   function handleRoomSnapshot(data) {
     if (busy) { setTimeout(() => handleRoomSnapshot(data), 150); return; }
-    const wasJoined = Boolean(online && online.seats[0] && online.seats[1]);
+    if (!online || data.version < online.version) return;
+    const wasJoined = Boolean(online.seats[0] && online.seats[1]);
     online.version = data.version;
     online.seats = [...data.seats];
     online.names = [...data.names];
+    online.pending = data.pending || null;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
     const entry = data.last && data.state.totalRolls > game.totalRolls ? data.last : null;
     applyRoomState(data.state, { animate: Boolean(entry), entry });
     const joined = online.seats[0] && online.seats[1];
     syncRoomView(joined && !wasJoined ? "Your friend is here! Go to the board when you are ready." : undefined);
+    if (onlineEntered && online.pending) handleOnlineSnakePending(online.pending);
+    else if (!online.pending) onlineSnakePromptId = null;
   }
 
   async function requestOnlineRoll() {
-    if (!online || busy) return;
+    if (!online || busy || online.pending) return;
     if (!onlineReady()) { status("Waiting for your friend to join the room…"); return; }
     if (!onlineMyTurn()) { status(`It’s ${game.players[game.turn].name}’s turn.`); return; }
     if (artworkState !== "ready") return;
@@ -729,7 +739,23 @@
     }, Math.max(70, duration(900)));
   }
 
-  async function animateRoll({ index, name, value, result, epoch }) {
+  async function animateJump({ index, name, jump, epoch }) {
+    const pawn = $(`pawn-${index}`);
+    status(jump.type === "ladder" ? `Up, up, and away! ${name} climbs ${jump.from} → ${jump.to}.` : `A little detour! ${name} slides ${jump.from} → ${jump.to}.`, jump.type);
+    const route = $("board-svg").querySelector(`[data-kind="${jump.type}"][data-from="${jump.from}"]`);
+    route?.classList.add("selected-path");
+    await wait(170);
+    pawn.classList.add("is-sliding");
+    positionPawn(index, jump.to);
+    playSound(jump.type);
+    await wait(750);
+    if (epoch !== gameEpoch) return false;
+    pawn.classList.remove("is-sliding");
+    highlightSquare(jump.to);
+    return true;
+  }
+
+  async function animateRoll({ index, name, value, result, epoch, pauseAtSnake = false }) {
     const pawn = $(`pawn-${index}`);
     $("die").classList.add("rolling");
     const frames = reducedMotion.matches ? 1 : 8;
@@ -746,7 +772,6 @@
     await wait(140);
     for (const square of result.steps) {
       pawn.classList.remove("hopping");
-      // Restart a short CSS hop without replacing the pawn or its gradient.
       void pawn.offsetWidth;
       pawn.classList.add("hopping");
       positionPawn(index, square);
@@ -756,22 +781,138 @@
       if (epoch !== gameEpoch) return false;
     }
     pawn.classList.remove("hopping");
-    if (result.jump) {
-      const jump = result.jump;
-      status(jump.type === "ladder" ? `Up, up, and away! ${name} climbs ${jump.from} → ${jump.to}.` : `A little detour! ${name} slides ${jump.from} → ${jump.to}.`, jump.type);
-      const route = $("board-svg").querySelector(`[data-kind="${jump.type}"][data-from="${jump.from}"]`);
-      route?.classList.add("selected-path");
-      await wait(170);
-      pawn.classList.add("is-sliding");
-      positionPawn(index, jump.to);
-      playSound(jump.type);
-      await wait(750);
-      if (epoch !== gameEpoch) return false;
-      pawn.classList.remove("is-sliding");
-      highlightSquare(jump.to);
+    if (result.jump && !(pauseAtSnake && result.jump.type === "snake")) {
+      if (!(await animateJump({ index, name, jump: result.jump, epoch }))) return false;
     }
     await wait(180);
     return epoch === gameEpoch;
+  }
+
+  function setSnakeDialogView(showRiddle) {
+    $("snake-choice-view").hidden = showRiddle;
+    $("snake-riddle-view").hidden = !showRiddle;
+  }
+
+  function promptSnakeChoice(entry, source = {}) {
+    return new Promise(resolve => {
+      if (snakePrompt) completeSnakePrompt({ choice: "slide" });
+      snakePrompt = { entry, source, resolve };
+      riddleChallenge = null;
+      setSnakeDialogView(false);
+      $("snake-choice-copy").textContent = `You landed on the snake’s head at ${entry.landed}. Its tail is on ${entry.to}. Take the classic slide, or solve a haiku riddle to stay on ${entry.landed}.`;
+      $("snake-classic-slide").textContent = `Take the slide to ${entry.to}`;
+      $("snake-choice-feedback").textContent = "";
+      $("snake-riddle-feedback").textContent = "";
+      $("snake-riddle-answer").value = "";
+      $("snake-riddle-submit").disabled = false;
+      openDialog($("snake-dialog"));
+      $("snake-classic-slide").focus({ preventScroll: true });
+    });
+  }
+
+  function completeSnakePrompt(choice) {
+    if (!snakePrompt) return;
+    const prompt = snakePrompt;
+    snakePrompt = null;
+    riddleChallenge = null;
+    if ($("snake-dialog").open) $("snake-dialog").close();
+    prompt.resolve(choice);
+  }
+
+  async function startSnakeRiddle() {
+    const prompt = snakePrompt;
+    if (!prompt || riddleChallenge) return;
+    const button = $("snake-riddle-start");
+    button.disabled = true;
+    $("snake-choice-feedback").textContent = "Gemini is writing a little haiku…";
+    const body = prompt.source.roomCode
+      ? { roomCode: prompt.source.roomCode, player: prompt.source.player, pendingId: prompt.source.pendingId }
+      : {};
+    try {
+      const data = await api("api/riddles", body);
+      if (snakePrompt !== prompt) return;
+      if (typeof data.id !== "string" || typeof data.haiku !== "string") throw new Error("Gemini returned an incomplete riddle. Please try again.");
+      riddleChallenge = { id: data.id };
+      $("snake-haiku").textContent = data.haiku;
+      $("snake-riddle-feedback").textContent = "";
+      $("snake-choice-feedback").textContent = "";
+      setSnakeDialogView(true);
+      $("snake-riddle-answer").focus({ preventScroll: true });
+    } catch (error) {
+      if (snakePrompt === prompt) $("snake-choice-feedback").textContent = error.message || "Gemini could not make a riddle. You can still take the classic slide.";
+    } finally {
+      if (snakePrompt === prompt) button.disabled = false;
+    }
+  }
+
+  async function submitSnakeAnswer(event) {
+    event.preventDefault();
+    const prompt = snakePrompt;
+    if (!prompt || !riddleChallenge) return;
+    const answerButton = $("snake-riddle-submit");
+    answerButton.disabled = true;
+    $("snake-riddle-feedback").textContent = "Checking your answer…";
+    const body = { answer: $("snake-riddle-answer").value };
+    if (prompt.source.roomCode) Object.assign(body, {
+      roomCode: prompt.source.roomCode,
+      player: prompt.source.player,
+      pendingId: prompt.source.pendingId,
+    });
+    try {
+      const result = await api(`api/riddles/${encodeURIComponent(riddleChallenge.id)}/answer`, body);
+      if (snakePrompt !== prompt) return;
+      if (result.correct) {
+        $("snake-riddle-feedback").textContent = `Lovely! You solved it and stay on ${prompt.entry.landed}.`;
+        await wait(450);
+        if (snakePrompt === prompt) completeSnakePrompt({ choice: "riddle", riddleId: riddleChallenge.id });
+      } else {
+        $("snake-riddle-feedback").textContent = `Not quite — the answer was ${result.answer || "a little mystery"}. The snake takes you to ${prompt.entry.to}.`;
+        await wait(900);
+        if (snakePrompt === prompt) completeSnakePrompt({ choice: "slide" });
+      }
+    } catch (error) {
+      if (snakePrompt === prompt) {
+        $("snake-riddle-feedback").textContent = error.message || "The answer could not be checked. Try again, or take the slide.";
+        answerButton.disabled = false;
+      }
+    }
+  }
+
+  function handleOnlineSnakePending(pending) {
+    if (!online || !onlineEntered) return;
+    if (pending.player !== online.player) {
+      if (!snakePrompt) status(`${game.players[pending.player].name} landed on snake head ${pending.landed}; waiting for their choice…`, "snake");
+      return;
+    }
+    if (onlineSnakePromptId === pending.id) return;
+    onlineSnakePromptId = pending.id;
+    busy = true;
+    render();
+    promptSnakeChoice(pending, { roomCode: online.code, player: online.player, pendingId: pending.id })
+      .then(choice => resolveOnlineSnake(choice))
+      .catch(error => {
+        busy = false;
+        onlineSnakePromptId = null;
+        status(error.message || "That snake turn could not be resolved.", "snake");
+        render();
+      });
+  }
+
+  async function resolveOnlineSnake(choice) {
+    if (!online?.pending) { busy = false; return; }
+    const { code, player } = online;
+    busy = true;
+    render();
+    try {
+      const data = await api(`api/rooms/${code}/resolve`, { player, choice: choice.choice, riddleId: choice.riddleId });
+      busy = false;
+      if (online && online.code === code) handleRoomSnapshot(data);
+    } catch (error) {
+      busy = false;
+      onlineSnakePromptId = null;
+      status(error.message || "That snake turn could not be resolved. Please choose again.", "snake");
+      if (online?.pending) handleOnlineSnakePending(online.pending);
+    } finally { render(); }
   }
 
   async function playTurn(automated = false) {
@@ -784,7 +925,7 @@
     const index = game.turn;
     const name = game.players[index].name;
     const value = Game.rollDie();
-    const result = Game.applyRoll(game, value);
+    let result = Game.applyRoll(game, value);
     const pawn = $(`pawn-${index}`);
     busy = true;
     clearPaths();
@@ -792,7 +933,14 @@
     render();
     status(`${name} is rolling…`);
     try {
-      if (!(await animateRoll({ index, name, value, result, epoch }))) return;
+      const fernTurn = game.mode === "computer" && index === 1;
+      if (result.entry.type === "snake" && !fernTurn) {
+        if (!(await animateRoll({ index, name, value, result, epoch, pauseAtSnake: true }))) return;
+        const choice = await promptSnakeChoice(result.entry);
+        if (epoch !== gameEpoch) return;
+        if (choice?.choice === "riddle") result = Game.applyRoll(game, value, { riddleRescued: true });
+        if (result.entry.type === "snake" && !(await animateJump({ index, name, jump: result.jump, epoch }))) return;
+      } else if (!(await animateRoll({ index, name, value, result, epoch }))) return;
       // Commit only a completed turn. Reloading mid-animation restores the last safe state.
       game = result.state;
       visualPositions = game.players.map(player => player.position);
@@ -1031,6 +1179,15 @@
   $("setting-board").addEventListener("click", () => { returnToMenu = true; setMenuOpen(false); openBoards(); });
   $("setting-names").addEventListener("click", () => { returnToMenu = true; setMenuOpen(false); openSetup(); });
   $("roll").addEventListener("click", () => { unlockAudio(); playTurn(); });
+  $("snake-close").addEventListener("click", () => completeSnakePrompt({ choice: "slide" }));
+  $("snake-classic-slide").addEventListener("click", () => completeSnakePrompt({ choice: "slide" }));
+  $("snake-riddle-start").addEventListener("click", startSnakeRiddle);
+  $("snake-riddle-form").addEventListener("submit", submitSnakeAnswer);
+  $("snake-riddle-skip").addEventListener("click", () => completeSnakePrompt({ choice: "slide" }));
+  $("snake-dialog").addEventListener("cancel", event => {
+    event.preventDefault();
+    completeSnakePrompt({ choice: "slide" });
+  });
   $("newgame").addEventListener("click", openSetup);
   $("edit-players").addEventListener("click", openSetup);
   $("mode-button").addEventListener("click", () => setMenuOpen(true, online ? "room" : "play"));
@@ -1105,7 +1262,7 @@
       scheduleComputer();
     });
     dialog.addEventListener("click", event => {
-      if (event.target !== dialog) return;
+      if (dialog.id === "snake-dialog" || event.target !== dialog) return;
       const rect = dialog.getBoundingClientRect();
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
     });
