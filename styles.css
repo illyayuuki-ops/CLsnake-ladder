@@ -147,7 +147,7 @@ svg { display: block; }
 #turn-name { min-width: 0; overflow-wrap: anywhere; }
 .turn-dot { width: 7px; height: 7px; background: var(--coral); border-radius: 50%; flex: none; }
 .dice-stage { display: flex; align-items: center; justify-content: center; height: 100px; }
-.die { width: 68px; height: 68px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 6px; padding: 13px; border-radius: 15px; background: #fffef7; box-shadow: 1px 4px 0 #dce0cb, 1px 7px 0 #bdc8af, 2px 12px 13px #5669431a; transform: rotate(-10deg); }
+.die { width: 68px; height: 68px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 6px; padding: 13px; border-radius: 15px; background: #fffef7; box-shadow: 1px 4px 0 #dce0cb, 1px 7px 0 #bdc8af, 2px 12px 13px #5669431a; transform: rotate(-10deg); touch-action: manipulation; }
 .pip { width: 8px; height: 8px; justify-self: center; align-self: center; border-radius: 50%; opacity: 0; background: #416043; box-shadow: inset 0 1px 1px #17291635; }
 .die[data-value="1"] .p5, .die[data-value="3"] .p5, .die[data-value="5"] .p5,
 .die[data-value="2"] .p1, .die[data-value="2"] .p9, .die[data-value="3"] .p1, .die[data-value="3"] .p9,
@@ -160,7 +160,7 @@ svg { display: block; }
 .primary-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; background: var(--green); color: #fffef5; border: 1px solid var(--green); border-radius: 9px; padding: 11px 15px; font-size: 13px; font-weight: 600; min-height: 42px; }
 .primary-button:not(:disabled):hover { background: var(--green-dark); border-color: var(--green-dark); }
 .primary-button .icon { width: 18px; height: 18px; }
-.roll-button { width: 100%; }
+.roll-button { width: 100%; touch-action: manipulation; }
 .roll-button #roll-label { margin-right: auto; }
 .roll-button:disabled { opacity: .75; }
 .keyboard-hint { color: var(--muted); font-size: 9px; margin-top: 10px; }
@@ -875,6 +875,8 @@ kbd { color: #dce5ff; border-color: rgba(255, 255, 255, .22); background: rgba(2
 .room-code { background: rgba(255, 255, 255, .11); color: #f5f6ff; }
 .board-camera-hint { opacity: 1; }
 
+#players-toggle, #activity-toggle { display: none; }
+
 @media (max-width: 740px) and (min-height: 521px) {
   .site-header { min-height: 52px; padding: 7px 10px; gap: 7px; }
   .header-stats { display: none; }
@@ -897,7 +899,7 @@ kbd { color: #dce5ff; border-color: rgba(255, 255, 255, .22); background: rgba(2
   .board-surface.is-3d { transform: translateY(-4px) rotateX(var(--board-tilt-x, 38deg)) rotateY(var(--board-tilt-y, -3deg)) scale(var(--board-zoom, 1)); }
   .board-camera-hint { display: none; }
   .site-footer { min-height: 14px; font-size: 7px; }
-  #activity-toggle { display: inline-flex; }
+  #players-toggle, #activity-toggle { display: inline-flex; }
 }
 @media (max-height: 760px) and (min-width: 741px) {
   .board-card { padding-bottom: 0; }
@@ -953,7 +955,8 @@ kbd { color: #dce5ff; border-color: rgba(255, 255, 255, .22); background: rgba(2
   .game-sidebar { grid-column: 3; grid-row: 1; }
 }
 .activity-symbol.is-riddle { color: #d8c4ff; background: rgba(167, 139, 250, .16); }
-.snake-dialog { width: min(460px, calc(100% - 24px)); }
+.snake-dialog { width: min(460px, calc(100% - 24px)); max-height: calc(100dvh - 24px); }
+.snake-dialog > .dialog-content { overflow-y: auto; max-height: calc(100dvh - 48px); }
 .snake-dialog h2 { padding-right: 26px; }
 .snake-choice-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 17px 0 8px; }
 .snake-choice-actions button { min-height: 44px; padding: 9px 10px; font-size: 11px; }
