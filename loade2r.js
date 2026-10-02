@@ -19,7 +19,7 @@
     this.finished = false;
 
     var $ = function (id) { return document.getElementById(id); };
-    this.root = $('splash'); this.board = $('board'); this.tok = $('tok');
+    this.root = $('splash'); this.board = $('splash-board'); this.tok = $('tok');
     this.ring = $('ring'); this.pct = $('pct'); this.msg = $('msg');
     if (opts.title) $('title').textContent = opts.title;
     if (opts.logo) $('logo').src = opts.logo;

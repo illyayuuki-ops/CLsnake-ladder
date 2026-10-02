@@ -60,6 +60,103 @@ let playersSheetOpen = false;
 let activitySheetOpen = false;
 let lastSheetTrigger = null;
 
+// Splash loader
+let splashLoader = null;
+let splashProgress = 0;
+let splashCompleted = false;
+let splashFallbackTimer = null;
+
+function initSplashLoader() {
+  const messages = ['Warming up the board', 'Rolling in the pieces', 'Almost ready'];
+  splashLoader = new SplashLoader({ title: 'Snakes & Ladders', messages });
+
+  // (a) font ready
+  document.fonts.ready.then(() => {
+    advanceSplashProgress(0.33);
+  });
+
+  // (b) game-engine.js already parsed by the time app.js runs (defer script order)
+  advanceSplashProgress(0.66);
+
+  // (c) first board image decode — hook into loadArtwork
+  const originalLoadArtwork = loadArtwork;
+  loadArtwork = function(source) {
+    const image = $("fantasy-art");
+    const epoch = ++artworkEpoch;
+    stopComputerTimer();
+    updateArtworkState("loading");
+
+    const finish = state => {
+      if (epoch !== artworkEpoch || image.getAttribute("src") !== source || artworkState !== "loading") return;
+      updateArtworkState(state);
+      if (state === "ready") {
+        advanceSplashProgress(1.0);
+        scheduleComputer();
+      }
+    };
+
+    image.onload = async () => {
+      try {
+        if (typeof image.decode === "function") await image.decode();
+        if (!image.naturalWidth) throw new Error("The original picture could not decode.");
+        finish("ready");
+      } catch { finish("error"); }
+    };
+    image.onerror = () => finish("error");
+    if (image.getAttribute("src") !== source) image.src = source;
+    if (image.complete) {
+      if (image.naturalWidth) image.onload();
+      else image.onerror();
+    }
+  };
+
+  // Fallback timer: if assets hang, complete after ~4s
+  splashFallbackTimer = setTimeout(() => {
+    if (!splashCompleted) {
+      advanceSplashProgress(1.0);
+    }
+  }, 4000);
+
+  // Skip splash immediately if prefers-reduced-motion AND assets already cached
+  if (reducedMotion.matches) {
+    // Check if font and first board image are already cached
+    const fontReady = document.fonts.check('1rem "DM Sans"');
+    const firstBoardImg = $("fantasy-art");
+    const imgCached = firstBoardImg && firstBoardImg.complete && firstBoardImg.naturalWidth > 0;
+    if (fontReady && imgCached) {
+      splashLoader.complete();
+      return;
+    }
+  }
+}
+
+function advanceSplashProgress(p) {
+  if (splashCompleted) return;
+  p = Math.max(splashProgress, Math.min(1, p));
+  if (p <= splashProgress) return;
+  splashProgress = p;
+  if (splashLoader) splashLoader.setProgress(p);
+  if (p >= 1 && !splashCompleted) {
+    splashCompleted = true;
+    if (splashFallbackTimer) clearTimeout(splashFallbackTimer);
+    onSplashComplete();
+  }
+}
+
+function onSplashComplete() {
+  const splash = $("splash");
+  if (splash) {
+    splashLoader.hide();
+    // Remove splash from DOM after fade-out
+    setTimeout(() => {
+      splash.remove();
+    }, 500);
+  }
+  // Show the start menu via existing flow
+  setMenuOpen(true, inviteRoom.length === 5 ? "online" : "main");
+  if (inviteRoom.length === 5) $("online-code").focus({ preventScroll: true });
+}
+
   function loadSave() {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
@@ -1368,7 +1465,7 @@ $("sound-toggle").addEventListener("click", () => {
     });
   }
 
-  loadSave();
+loadSave();
   visualPositions = game.players.map(player => player.position);
   if (game.mode === "local") localFriendName = game.players[1].name;
   buildPlayers();
@@ -1377,11 +1474,7 @@ $("sound-toggle").addEventListener("click", () => {
   setDie(game.history[0]?.die || 1);
   if (restored && game.totalRolls) status(game.winner !== null ? `${game.players[game.winner].name} reached 100. What a lovely finish!` : `Welcome back! ${game.players[game.turn].name}’s turn. Your adventure is right where you left it.`);
   save();
-  // The menu always greets the player first; Play, Settings, and Exit are one tap away.
-  if (inviteRoom.length === 5) {
-    $("online-code").value = inviteRoom;
-    $("online-message").textContent = `A friend invited you to room ${inviteRoom}. Choose Join when you’re ready.`;
-  }
-  setMenuOpen(true, inviteRoom.length === 5 ? "online" : "main");
-  if (inviteRoom.length === 5) $("online-code").focus({ preventScroll: true });
+
+  // Initialize splash loader and drive progress from real asset readiness
+  initSplashLoader();
 })();
