@@ -1,0 +1,39 @@
+{
+  "name": "Snakes & Ladders",
+  "short_name": "Snakes",
+  "description": "A fresh take on Snakes & Ladders. Play with a friend or the computer, explore 20 boards, and enjoy a little friendly competition.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0b1020",
+  "background_color": "#0b1020",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en"
+}

@@ -1,0 +1,15 @@
+{
+  "name": "snakes-and-ladders",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A dependency-free Snakes & Ladders game with 20 boards, local, computer, and room-code online play.",
+  "scripts": {
+    "dev": "node scripts/server.js",
+    "start": "node scripts/server.js",
+    "test": "node --test tests/engine.test.js tests/server.test.js",
+    "test:browser": "playwright test",
+    "test:all": "npm test && npm run test:browser"
+  },
+  "engines": { "node": ">=18" },
+  "devDependencies": { "@playwright/test": "^1.63.0" }
+}
