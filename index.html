@@ -126,6 +126,26 @@
       <footer class="site-footer"><span class="save-indicator"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span id="save-status">Your progress is saved automatically</span></span><span class="footer-rule">First to 100 · Exact roll to win</span></footer>
       <noscript><p class="noscript-message">Please enable JavaScript to play Snakes &amp; Ladders.</p></noscript>
     </main>
+    <div class="sheet-scrim" id="players-sheet-scrim" aria-hidden="true"></div>
+    <aside class="sheet-panel" id="players-sheet" role="dialog" aria-modal="true" aria-labelledby="players-sheet-title" hidden>
+      <div class="sheet-panel-header">
+        <h2 id="players-sheet-title">The players</h2>
+        <button class="sheet-panel-close" id="players-sheet-close" aria-label="Close players panel"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="sheet-panel-content">
+        <div id="players-sheet-body"></div>
+      </div>
+    </aside>
+    <div class="sheet-scrim" id="activity-sheet-scrim" aria-hidden="true"></div>
+    <aside class="sheet-panel" id="activity-sheet" role="dialog" aria-modal="true" aria-labelledby="activity-sheet-title" hidden>
+      <div class="sheet-panel-header">
+        <h2 id="activity-sheet-title">Recent moves</h2>
+        <button class="sheet-panel-close" id="activity-sheet-close" aria-label="Close recent moves"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="sheet-panel-content">
+        <div id="activity-sheet-body"></div>
+      </div>
+    </aside>
     <section id="start-menu" class="start-menu" role="dialog" aria-modal="true" aria-labelledby="start-menu-title">
       <h2 class="sr-only" id="start-menu-title">Game menu</h2>
       <div class="menu-panel">
@@ -214,73 +234,83 @@
     </section>
   </div>
 
-  <dialog id="rules-dialog" class="dialog rules-dialog" aria-labelledby="rules-title">
+<dialog id="rules-dialog" class="dialog rules-dialog" aria-labelledby="rules-title">
     <button class="icon-button dialog-close" data-close-dialog aria-label="Close instructions"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
-    <p class="eyebrow">THE SIMPLE THINGS ARE THE BEST</p><h2 id="rules-title">A little luck. Four simple rules.</h2><p class="dialog-intro">First to square 100 gets the bragging rights.</p>
-    <ol class="rules-list">
-      <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><div><h3>Roll & wander</h3><p>Both players start on square 1. Take turns rolling and moving forward. A six is just a six — no extra turn.</p></div></li>
-      <li><span class="rule-icon ladder-rule"><svg class="icon" aria-hidden="true"><use href="#i-ladder"/></svg></span><div><h3>Enjoy the little climbs</h3><p>Land at the foot of a ladder and go straight to the top. A lucky shortcut!</p></div></li>
-      <li><span class="rule-icon snake-rule"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg></span><div><h3>Take the slides in stride</h3><p>Slide to the tail, or solve a haiku to stay on the head. Fern always takes the classic slide.</p></div></li>
-      <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg></span><div><h3>Finish just right</h3><p>You need an exact roll to reach 100. Roll too high? Stay put and try on your next turn.</p></div></li>
-    </ol><button class="primary-button full-width" data-close-dialog>Got it. Let’s roll.<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-  </dialog>
-
-  <dialog id="boards-dialog" class="dialog boards-dialog" aria-labelledby="boards-title">
-    <button class="icon-button dialog-close" data-close-dialog aria-label="Close board chooser"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
-    <p class="eyebrow">YOUR 20 ORIGINAL BOARDS</p><div class="boards-dialog-heading"><div><h2 id="boards-title">Choose your board.</h2><p class="dialog-intro">The actual pictures, with the original snake and ladder tracking.</p></div><button class="small-button" id="shuffle-board"><svg class="icon" aria-hidden="true"><use href="#i-shuffle"/></svg>Surprise me</button></div>
-    <div class="board-picker-grid" id="board-picker" role="group" aria-label="Choose one of 20 boards"></div>
-    <nav class="board-pagination" aria-label="Board preview pages">
-      <button class="small-button" id="previous-boards" aria-label="Previous four boards"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg>Previous</button>
-      <span id="board-page-label" aria-live="polite">Boards 1–4 of 20</span>
-      <button class="small-button" id="next-boards" aria-label="Next four boards">Next<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-    </nav>
-    <div class="boards-dialog-footer"><div><strong id="selected-board-label">The Greenhouse</strong><p>Switching boards starts a fresh game.</p></div><button class="primary-button" id="play-board">Let’s play<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
-  </dialog>
-
-  <dialog id="setup-dialog" class="dialog setup-dialog" aria-labelledby="setup-title">
-    <button class="icon-button dialog-close" data-close-dialog aria-label="Close game setup"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
-    <p class="eyebrow">A FRESH START</p><h2 id="setup-title">Make it your game.</h2><p class="dialog-intro">Find a friend. Or make a new one.</p>
-    <form id="setup-form">
-      <fieldset class="mode-options"><legend>Who’s playing?</legend><label class="mode-option"><input type="radio" name="mode" value="local" checked><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg><strong>With a friend</strong><span>Two players, one device</span></label><label class="mode-option"><input type="radio" name="mode" value="computer"><svg class="icon" aria-hidden="true"><use href="#i-computer"/></svg><strong>Meet Fern</strong><span>Your computer companion</span></label></fieldset>
-      <div class="name-fields"><label>Your name<input id="player-one-name" name="player1" maxlength="24" placeholder="Player 1" autocomplete="off"></label><label id="player-two-label"><span>Friend’s name</span><input id="player-two-name" name="player2" maxlength="24" placeholder="Player 2" autocomplete="off"></label></div>
-      <fieldset class="speed-options"><legend>A pace that suits you</legend><label><input type="radio" name="speed" value="normal" checked><span>Take it easy</span></label><label><input type="radio" name="speed" value="quick"><span>Quick & breezy</span></label></fieldset>
-      <p class="setup-note" id="setup-note">You’ll play on The Greenhouse. Your current game will be replaced.</p>
-      <div class="dialog-actions"><button class="secondary-button" type="button" data-close-dialog>Not yet</button><button class="primary-button" type="submit">Start playing<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
-    </form>
-  </dialog>
-
-  <dialog id="snake-dialog" class="dialog snake-dialog" aria-labelledby="snake-choice-title">
-    <button class="icon-button dialog-close" id="snake-close" aria-label="Take the classic snake slide"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
-    <div id="snake-choice-view">
-      <p class="eyebrow">SNAKE AHEAD</p>
-      <h2 id="snake-choice-title">A twist in the trail.</h2>
-      <p class="dialog-intro" id="snake-choice-copy">You landed on a snake’s head. Take the classic slide, or try a haiku riddle to stay on this square.</p>
-      <div class="snake-choice-actions">
-        <button class="secondary-button" id="snake-classic-slide">Take the slide</button>
-        <button class="primary-button" id="snake-riddle-start"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"/></svg>Try a Gemini haiku</button>
-      </div>
-      <p class="snake-riddle-note">Solve it correctly to stay on the snake’s head. A wrong answer or a skip sends you to the tail.</p>
-      <p class="snake-riddle-feedback" id="snake-choice-feedback" role="status" aria-live="polite"></p>
+    <div class="dialog-content">
+      <p class="eyebrow">THE SIMPLE THINGS ARE THE BEST</p><h2 id="rules-title">A little luck. Four simple rules.</h2><p class="dialog-intro">First to square 100 gets the bragging rights.</p>
+      <ol class="rules-list">
+        <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><div><h3>Roll & wander</h3><p>Both players start on square 1. Take turns rolling and moving forward. A six is just a six — no extra turn.</p></div></li>
+        <li><span class="rule-icon ladder-rule"><svg class="icon" aria-hidden="true"><use href="#i-ladder"/></svg></span><div><h3>Enjoy the little climbs</h3><p>Land at the foot of a ladder and go straight to the top. A lucky shortcut!</p></div></li>
+        <li><span class="rule-icon snake-rule"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg></span><div><h3>Take the slides in stride</h3><p>Slide to the tail, or solve a haiku to stay on the head. Fern always takes the classic slide.</p></div></li>
+        <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg></span><div><h3>Finish just right</h3><p>You need an exact roll to reach 100. Roll too high? Stay put and try on your next turn.</p></div></li>
+      </ol><button class="primary-button full-width" data-close-dialog>Got it. Let's roll.<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
     </div>
-    <div id="snake-riddle-view" hidden>
-      <p class="eyebrow">A LITTLE HAIKU RIDDLE</p>
-      <h2 id="snake-riddle-title">What am I?</h2>
-      <pre class="snake-haiku" id="snake-haiku" aria-label="Riddle in haiku form"></pre>
-      <form class="snake-riddle-form" id="snake-riddle-form">
-        <label for="snake-riddle-answer">Your answer</label>
-        <div class="snake-riddle-answer-row"><input id="snake-riddle-answer" name="answer" maxlength="60" autocomplete="off" required><button class="primary-button" id="snake-riddle-submit" type="submit">Answer</button></div>
+  </dialog>
+
+<dialog id="boards-dialog" class="dialog boards-dialog" aria-labelledby="boards-title">
+    <button class="icon-button dialog-close" data-close-dialog aria-label="Close board chooser"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <div class="dialog-content">
+      <p class="eyebrow">YOUR 20 ORIGINAL BOARDS</p><div class="boards-dialog-heading"><div><h2 id="boards-title">Choose your board.</h2><p class="dialog-intro">The actual pictures, with the original snake and ladder tracking.</p></div><button class="small-button" id="shuffle-board"><svg class="icon" aria-hidden="true"><use href="#i-shuffle"/></svg>Surprise me</button></div>
+      <div class="board-picker-grid" id="board-picker" role="group" aria-label="Choose one of 20 boards"></div>
+      <nav class="board-pagination" aria-label="Board preview pages">
+        <button class="small-button" id="previous-boards" aria-label="Previous four boards"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg>Previous</button>
+        <span id="board-page-label" aria-live="polite">Boards 1-4 of 20</span>
+        <button class="small-button" id="next-boards" aria-label="Next four boards">Next<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </nav>
+      <div class="boards-dialog-footer"><div><strong id="selected-board-label">The Greenhouse</strong><p>Switching boards starts a fresh game.</p></div><button class="primary-button" id="play-board">Let's play<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+    </div>
+  </dialog>
+
+<dialog id="setup-dialog" class="dialog setup-dialog" aria-labelledby="setup-title">
+    <button class="icon-button dialog-close" data-close-dialog aria-label="Close game setup"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <div class="dialog-content">
+      <p class="eyebrow">A FRESH START</p><h2 id="setup-title">Make it your game.</h2><p class="dialog-intro">Find a friend. Or make a new one.</p>
+      <form id="setup-form">
+        <fieldset class="mode-options"><legend>Who's playing?</legend><label class="mode-option"><input type="radio" name="mode" value="local" checked><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg><strong>With a friend</strong><span>Two players, one device</span></label><label class="mode-option"><input type="radio" name="mode" value="computer"><svg class="icon" aria-hidden="true"><use href="#i-computer"/></svg><strong>Meet Fern</strong><span>Your computer companion</span></label></fieldset>
+        <div class="name-fields"><label>Your name<input id="player-one-name" name="player1" maxlength="24" placeholder="Player 1" autocomplete="off"></label><label id="player-two-label"><span>Friend's name</span><input id="player-two-name" name="player2" maxlength="24" placeholder="Player 2" autocomplete="off"></label></div>
+        <fieldset class="speed-options"><legend>A pace that suits you</legend><label><input type="radio" name="speed" value="normal" checked><span>Take it easy</span></label><label><input type="radio" name="speed" value="quick"><span>Quick & breezy</span></label></fieldset>
+        <p class="setup-note" id="setup-note">You'll play on The Greenhouse. Your current game will be replaced.</p>
+        <div class="dialog-actions"><button class="secondary-button" type="button" data-close-dialog>Not yet</button><button class="primary-button" type="submit">Start playing<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
       </form>
-      <p class="snake-riddle-feedback" id="snake-riddle-feedback" role="status" aria-live="polite"></p>
-      <button class="text-button snake-riddle-skip" id="snake-riddle-skip">Skip and take the slide</button>
+    </div>
+  </dialog>
+
+<dialog id="snake-dialog" class="dialog snake-dialog" aria-labelledby="snake-choice-title">
+    <button class="icon-button dialog-close" id="snake-close" aria-label="Take the classic snake slide"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <div class="dialog-content">
+      <div id="snake-choice-view">
+        <p class="eyebrow">SNAKE AHEAD</p>
+        <h2 id="snake-choice-title">A twist in the trail.</h2>
+        <p class="dialog-intro" id="snake-choice-copy">You landed on a snake's head. Take the classic slide, or try a haiku riddle to stay on this square.</p>
+        <div class="snake-choice-actions">
+          <button class="secondary-button" id="snake-classic-slide">Take the slide</button>
+          <button class="primary-button" id="snake-riddle-start"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"/></svg>Try a Gemini haiku</button>
+        </div>
+        <p class="snake-riddle-note">Solve it correctly to stay on the snake's head. A wrong answer or a skip sends you to the tail.</p>
+        <p class="snake-riddle-feedback" id="snake-choice-feedback" role="status" aria-live="polite"></p>
+      </div>
+      <div id="snake-riddle-view" hidden>
+        <p class="eyebrow">A LITTLE HAIKU RIDDLE</p>
+        <h2 id="snake-riddle-title">What am I?</h2>
+        <pre class="snake-haiku" id="snake-haiku" aria-label="Riddle in haiku form"></pre>
+        <form class="snake-riddle-form" id="snake-riddle-form">
+          <label for="snake-riddle-answer">Your answer</label>
+          <div class="snake-riddle-answer-row"><input id="snake-riddle-answer" name="answer" maxlength="60" autocomplete="off" required><button class="primary-button" id="snake-riddle-submit" type="submit">Answer</button></div>
+        </form>
+        <p class="snake-riddle-feedback" id="snake-riddle-feedback" role="status" aria-live="polite"></p>
+        <button class="text-button snake-riddle-skip" id="snake-riddle-skip">Skip and take the slide</button>
+      </div>
     </div>
   </dialog>
 
   <dialog id="win-dialog" class="dialog win-dialog" aria-labelledby="win-title">
     <button class="icon-button dialog-close" data-close-dialog aria-label="Close celebration"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
-    <div class="winner-trophy" aria-hidden="true"><svg class="icon"><use href="#i-trophy"/></svg><span class="trophy-spark spark-one"><svg class="icon"><use href="#i-sparkle"/></svg></span><span class="trophy-spark spark-two"><svg class="icon"><use href="#i-sparkle"/></svg></span></div>
-    <p class="eyebrow">A CLIMB WORTH CELEBRATING</p><h2 id="win-title"><span id="winner-name">Player 1</span> wins!</h2><p class="dialog-intro">A few ups, a few downs, and one lovely finish.</p>
-    <div class="winner-stats"><div><strong id="winner-rolls">0</strong><span>rolls</span></div><div><strong id="winner-climbs">0</strong><span>ladders climbed</span></div><div><strong id="winner-slides">0</strong><span>snakes survived</span></div></div>
-    <button class="primary-button full-width" id="play-again"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>One more adventure</button><button class="text-button another-board-button" id="winner-change-board">Try a different board<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    <div class="dialog-content">
+      <div class="winner-trophy" aria-hidden="true"><svg class="icon"><use href="#i-trophy"/></svg><span class="trophy-spark spark-one"><svg class="icon"><use href="#i-sparkle"/></svg></span><span class="trophy-spark spark-two"><svg class="icon"><use href="#i-sparkle"/></svg></span></div>
+      <p class="eyebrow">A CLIMB WORTH CELEBRATING</p><h2 id="win-title"><span id="winner-name">Player 1</span> wins!</h2><p class="dialog-intro">A few ups, a few downs, and one lovely finish.</p>
+      <div class="winner-stats"><div><strong id="winner-rolls">0</strong><span>rolls</span></div><div><strong id="winner-climbs">0</strong><span>ladders climbed</span></div><div><strong id="winner-slides">0</strong><span>snakes survived</span></div></div>
+      <button class="primary-button full-width" id="play-again"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>One more adventure</button><button class="text-button another-board-button" id="winner-change-board">Try a different board<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    </div>
   </dialog>
   <div id="confetti" class="confetti" aria-hidden="true"></div>
 </body>

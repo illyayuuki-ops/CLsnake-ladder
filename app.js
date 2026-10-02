@@ -56,6 +56,9 @@
   let snakePrompt = null;
   let riddleChallenge = null;
   let onlineSnakePromptId = null;
+let playersSheetOpen = false;
+let activitySheetOpen = false;
+let lastSheetTrigger = null;
 
   function loadSave() {
     try {
@@ -98,7 +101,71 @@
   const wait = ms => new Promise(resolve => setTimeout(resolve, duration(ms)));
   const pad = value => String(value).padStart(2, "0");
   const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-  const anyDialogOpen = () => menuOpen || dialogs.some(dialog => dialog.open);
+  const anyDialogOpen = () => menuOpen || dialogs.some(dialog => dialog.open) || anySheetOpen();
+
+  function anySheetOpen() {
+    return playersSheetOpen || activitySheetOpen;
+  }
+
+  function openSheet(sheetId, scrimId, triggerEl) {
+    const sheet = $(sheetId);
+    const scrim = $(scrimId);
+    if (!sheet || !scrim) return;
+    lastSheetTrigger = triggerEl;
+    if (sheetId === "players-sheet") {
+      playersSheetOpen = true;
+      $("players-sheet-body").innerHTML = $("players-panel").innerHTML;
+      $("players-sheet-body").querySelectorAll("button").forEach(btn => {
+        if (btn.id === "edit-players" || btn.id === "newgame") {
+          btn.addEventListener("click", () => {
+            closeSheet("players-sheet", "players-sheet-scrim");
+            if (btn.id === "edit-players") openSetup();
+            else if (btn.id === "newgame") openSetup();
+          });
+        }
+      });
+    } else if (sheetId === "activity-sheet") {
+      activitySheetOpen = true;
+      $("activity-sheet-body").innerHTML = $("activity-panel").innerHTML;
+    }
+    sheet.hidden = false;
+    scrim.classList.add("is-open");
+    sheet.classList.add("is-open");
+    scrim.hidden = false;
+    document.body.style.overflow = "hidden";
+    fitBoard();
+    triggerEl?.focus({ preventScroll: true });
+  }
+
+  function closeSheet(sheetId, scrimId) {
+    const sheet = $(sheetId);
+    const scrim = $(scrimId);
+    if (!sheet || !scrim) return;
+    if (sheetId === "players-sheet") playersSheetOpen = false;
+    else if (sheetId === "activity-sheet") activitySheetOpen = false;
+    scrim.classList.remove("is-open");
+    sheet.classList.remove("is-open");
+    sheet.addEventListener("transitionend", () => {
+      if (!sheet.classList.contains("is-open")) {
+        sheet.hidden = true;
+        scrim.hidden = true;
+        document.body.style.overflow = "";
+      }
+    }, { once: true });
+    lastSheetTrigger?.focus({ preventScroll: true });
+    fitBoard();
+  }
+
+  function handleSheetKeydown(event) {
+    if (event.key !== "Escape") return;
+    if (playersSheetOpen) {
+      event.preventDefault();
+      closeSheet("players-sheet", "players-sheet-scrim");
+    } else if (activitySheetOpen) {
+      event.preventDefault();
+      closeSheet("activity-sheet", "activity-sheet-scrim");
+    }
+  }
 
   function svgElement(tag, attributes, parent) {
     const node = document.createElementNS(NS, tag);
@@ -1196,13 +1263,24 @@
   $("show-ladders").addEventListener("click", () => filterPaths("ladder"));
   $("show-snakes").addEventListener("click", () => filterPaths("snake"));
   $("view-toggle").addEventListener("click", () => { preferences.perspective = !preferences.perspective; applyAppearance(); save(); });
-  $("sound-toggle").addEventListener("click", () => {
+$("sound-toggle").addEventListener("click", () => {
     preferences.sound = !preferences.sound;
     unlockAudio();
     playSound("step");
     applyAppearance();
     save();
   });
+
+  $("players-toggle").addEventListener("click", () => openSheet("players-sheet", "players-sheet-scrim", $("players-toggle")));
+  $("players-sheet-close").addEventListener("click", () => closeSheet("players-sheet", "players-sheet-scrim"));
+  $("players-sheet-scrim").addEventListener("click", () => closeSheet("players-sheet", "players-sheet-scrim"));
+
+  $("activity-toggle").addEventListener("click", () => openSheet("activity-sheet", "activity-sheet-scrim", $("activity-toggle")));
+  $("activity-sheet-close").addEventListener("click", () => closeSheet("activity-sheet", "activity-sheet-scrim"));
+  $("activity-sheet-scrim").addEventListener("click", () => closeSheet("activity-sheet", "activity-sheet-scrim"));
+
+  document.addEventListener("keydown", handleSheetKeydown);
+
   $("retry-art").addEventListener("click", () => {
     loadArtwork(`snakes-and-ladders-board-${pad(game.boardIndex + 1)}.jpg?retry=${Date.now()}`);
   });
