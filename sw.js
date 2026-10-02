@@ -1,11 +1,13 @@
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `snakes-ladders-${CACHE_VERSION}`;
 
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
+  './loader2.css',
   './app.js',
+  './loade2r.js',
   './game-engine.js',
   './assets/favicon.svg',
   './assets/fonts/dm-sans-latin.woff2',
