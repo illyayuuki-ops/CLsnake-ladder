@@ -15,8 +15,10 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="preload" href="assets/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="loader2.css">
   <link rel="stylesheet" href="styles.css">
   <script src="game-engine.js" defer></script>
+  <script src="loade2r.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -51,6 +53,25 @@
   </defs></svg>
 
   <div class="game-window">
+    <!-- Splash loader markup: keep these ids, loade2r.js depends on them -->
+    <main class="stage" id="splash" role="status" aria-label="Loading game" aria-busy="true">
+      <div class="logo" aria-hidden="true">
+        <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="t" cx="50" cy="50" r="48"/>
+          <circle class="p" id="ring" cx="50" cy="50" r="48" pathLength="1000"/>
+        </svg>
+        <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/></svg>
+      </div>
+      <h1 id="title">Snakes & Ladders</h1>
+      <div class="wrap">
+        <div class="board" id="board"></div>
+        <div class="token" id="tok"><i></i></div>
+      </div>
+      <div class="row">
+        <span><svg class="dice" aria-hidden="true"><use href="#i-dice"/></svg> <span id="msg">Loading</span></span>
+        <span id="pct">0%</span>
+      </div>
+    </main>
     <header class="site-header">
       <a class="brand" href="./index.html" aria-label="Snakes and Ladders home">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/></svg></span>
