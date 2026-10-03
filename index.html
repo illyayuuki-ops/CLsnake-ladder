@@ -288,13 +288,47 @@
           <p class="online-message" id="settings-message" role="status" aria-live="polite"></p>
         </div>
 
-        <div class="menu-view is-exit" data-view="exit" hidden>
+        <div class="menu-view" data-view="exit" hidden>
           <span class="menu-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/></svg></span>
           <h3 class="menu-title">Thanks for playing.</h3>
           <p class="menu-tagline">Your board will be waiting. Close this tab whenever you like — or come straight back.</p>
           <button class="secondary-button menu-button" id="exit-back"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg><span>Back to the menu</span></button>
         </div>
 
+        <div class="menu-view" data-view="auth" hidden>
+          <button class="back-button" data-menu-back><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg>Back</button>
+          <p class="eyebrow">ACCOUNT</p>
+          <h3 class="menu-title">Sign in to play online</h3>
+          <p class="menu-tagline">Your rooms and progress sync across devices.</p>
+          <div id="auth-login-view">
+            <form id="auth-login-form" novalidate>
+              <div class="name-fields">
+                <label>Username<input id="auth-login-username" name="username" type="text" maxlength="16" autocomplete="username" required></label>
+                <label>Password<input id="auth-login-password" name="password" type="password" autocomplete="current-password" required></label>
+              </div>
+              <p class="dialog-error" id="auth-login-error" role="alert" aria-live="polite"></p>
+              <div class="dialog-actions">
+                <button class="primary-button full-width" type="submit">Log in<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                <button class="text-button full-width" type="button" id="auth-switch-to-register">Create account instead<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+              </div>
+            </form>
+            <p class="text-button" id="auth-skip">Play as guest<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></p>
+          </div>
+          <div id="auth-register-view" hidden>
+            <form id="auth-register-form" novalidate>
+              <div class="name-fields">
+                <label>Username<input id="auth-register-username" name="username" type="text" maxlength="16" autocomplete="username" required pattern="[a-zA-Z0-9_]{2,16}" title="2-16 characters, letters, numbers, underscore only"></label>
+                <p class="form-hint">2–16 characters, letters, numbers, underscore only.</p>
+                <label>Password<input id="auth-register-password" name="password" type="password" autocomplete="new-password" required minlength="4"></label>
+              </div>
+              <p class="dialog-error" id="auth-register-error" role="alert" aria-live="polite"></p>
+              <div class="dialog-actions">
+                <button class="primary-button full-width" type="submit">Create account<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                <button class="text-button full-width" type="button" id="auth-switch-to-login">Log in instead<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </section>
   </div>

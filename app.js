@@ -136,7 +136,7 @@ function onSplashComplete() {
   }
 
   // Auth state
-  let authToken = null;
+  let authToken = localStorage.getItem("authToken");
   let authUsername = null;
   let authSkipped = false;
 
@@ -149,6 +149,7 @@ function onSplashComplete() {
         if (saved.token && saved.username) {
           authToken = saved.token;
           authUsername = saved.username;
+          localStorage.setItem("authToken", authToken);
         }
       }
       authSkipped = localStorage.getItem("snake-ladder:guest") === "true";
@@ -158,6 +159,7 @@ function onSplashComplete() {
   function saveAuth() {
     if (authToken && authUsername) {
       localStorage.setItem("snake-ladder:auth", JSON.stringify({ token: authToken, username: authUsername }));
+      localStorage.setItem("authToken", authToken);
     }
   }
 
@@ -167,6 +169,7 @@ function onSplashComplete() {
     authSkipped = false;
     localStorage.removeItem("snake-ladder:auth");
     localStorage.removeItem("snake-ladder:guest");
+    localStorage.removeItem("authToken");
   }
 
   // API wrapper with auth
@@ -185,9 +188,18 @@ function onSplashComplete() {
     return data;
   }
 
+  // Auth-specific API (no auth header needed for login/register)
+  async function apiAuth(path, body) {
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    const response = await fetch(path, { method: "POST", headers, body: JSON.stringify(body) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `The game server answered with ${response.status}.`);
+    return data;
+  }
+
   // Auth API calls
   async function authLogin(username, password) {
-    const data = await api("api/auth/login", { username, password });
+    const data = await apiAuth("api/auth/login", { username, password });
     authToken = data.token;
     authUsername = data.username;
     saveAuth();
@@ -195,7 +207,7 @@ function onSplashComplete() {
   }
 
   async function authRegister(username, password) {
-    const data = await api("api/auth/register", { username, password });
+    const data = await apiAuth("api/auth/register", { username, password });
     authToken = data.token;
     authUsername = data.username;
     saveAuth();
@@ -1941,7 +1953,8 @@ $("sound-toggle").addEventListener("click", () => {
         await authLogin(username, password);
         loginForm.reset();
         $("auth-dialog").close();
-        if (authSkipped) setGuestMode();
+        setMenuView("online-choice");
+        $("online-message").textContent = "Choose public matchmaking or a private room.";
       } catch (error) {
         errorEl.textContent = error.message;
       }
@@ -1960,6 +1973,8 @@ $("sound-toggle").addEventListener("click", () => {
         await authRegister(username, password);
         registerForm.reset();
         $("auth-dialog").close();
+        setMenuView("online-choice");
+        $("online-message").textContent = "Choose public matchmaking or a private room.";
       } catch (error) {
         errorEl.textContent = error.message;
       }
@@ -1980,6 +1995,35 @@ $("sound-toggle").addEventListener("click", () => {
       $("auth-register-view").hidden = true;
       $("auth-login-view").hidden = false;
     });
+  }
+
+  // Guest/skip buttons
+  const skipLogin = $("auth-skip");
+  if (skipLogin) {
+    skipLogin.addEventListener("click", () => {
+      setGuestMode();
+      $("auth-dialog").close();
+      setMenuView("online-choice");
+      $("online-message").textContent = "Choose public matchmaking or a private room.";
+    });
+  }
+  const skipRegister = $("auth-skip-register");
+  if (skipRegister) {
+    skipRegister.addEventListener("click", () => {
+      setGuestMode();
+      $("auth-dialog").close();
+      setMenuView("online-choice");
+      $("online-message").textContent = "Choose public matchmaking or a private room.";
+    });
+  }
+
+  // Auth menu view close handler (back button)
+  const authMenuView = document.querySelector('[data-view="auth"]');
+  if (authMenuView) {
+    const backBtn = authMenuView.querySelector('[data-menu-back]');
+    if (backBtn) {
+      backBtn.addEventListener("click", () => setMenuView("play"));
+    }
   }
 
   // Guest/skip buttons
