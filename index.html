@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="game-engine.js" defer></script>
   <script src="loade2r.js" defer></script>
+  <script src="vendor/qrcode.min.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -48,6 +49,7 @@
     <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 2.6v2.8m0 13.2v2.8M2.6 12h2.8m13.2 0h2.8M5.4 5.4l2 2m9.2 9.2 2 2m0-13.2-2 2m-9.2 9.2-2 2"/></symbol>
     <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4.5H6.5A2 2 0 0 0 4.5 6.5v11a2 2 0 0 0 2 2H14m1.5-11.5L20 12l-4.5 4.5M20 12H10"/></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.2 12h17.6M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="12" r="4"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.5 13.5a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1M13.5 10.5a4 4 0 0 0-5.6 0l-3 3a4 4 0 1 0 5.6 5.6l1-1"/></symbol>
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V3m0 0c5-3 9 3 14 0v10c-5 3-9-3-14 0"/></symbol>
   </defs></svg>
@@ -212,6 +214,7 @@
               <div class="online-join-row">
                 <input id="online-code" name="code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC12" aria-describedby="online-help">
                 <button class="secondary-button" id="online-join" type="submit">Join</button>
+                <button class="secondary-button" id="online-scan" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan QR</span></button>
               </div>
             </form>
           </div>
@@ -223,6 +226,11 @@
           <p class="eyebrow">ONLINE ROOM</p>
           <h3 class="menu-title">Room <span class="room-code" id="room-code">-----</span></h3>
           <p class="menu-tagline" id="room-status">Waiting for another player to join…</p>
+          <div class="qr-section" hidden>
+            <p class="qr-label">Scan to join</p>
+            <div class="qr-canvas" id="qr-canvas" aria-label="QR code for room"></div>
+            <p class="room-code-display" id="room-code-display"></p>
+          </div>
           <div class="menu-actions">
             <button class="secondary-button menu-button" id="online-copy"><svg class="icon" aria-hidden="true"><use href="#i-link"/></svg><span>Copy invite link</span></button>
             <button class="primary-button menu-button" id="online-enter"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Go to the board</span></button>

@@ -94,7 +94,11 @@ function onSplashComplete() {
   }
   // Show the start menu via existing flow
   setMenuOpen(true, inviteRoom.length === 5 ? "online" : "main");
-  if (inviteRoom.length === 5) $("online-code").focus({ preventScroll: true });
+  if (inviteRoom.length === 5) {
+    $("online-code").focus({ preventScroll: true });
+    // Auto-join the room from the invite link
+    setTimeout(() => joinRoom(inviteRoom), 100);
+  }
 }
 
   function loadSave() {
@@ -492,6 +496,10 @@ function onSplashComplete() {
     $("setting-board").hidden = !isLocalMode;
     $("setting-board-value").textContent = Game.BOARDS[game.boardIndex].name;
     $("setting-names-value").textContent = `${game.players[0].name} and ${game.players[1].name}`;
+    // Show/hide QR scan button based on BarcodeDetector support
+    if ($("online-scan")) {
+      $("online-scan").hidden = !window.BarcodeDetector;
+    }
     syncRoomView();
   }
 
@@ -503,6 +511,27 @@ function onSplashComplete() {
     else if (!joined) $("room-status").textContent = "Waiting for another player to join… share the room code.";
     else $("room-status").textContent = `Both players are here. ${game.players[game.turn].name} plays first${game.turn === online.player ? " — that’s you!" : "."}`;
     if (message) $("online-message").textContent = message;
+  }
+
+  function generateRoomQR(code) {
+    const canvas = $("qr-canvas");
+    const display = $("room-code-display");
+    const section = canvas.closest(".qr-section");
+    if (!canvas || !code) return;
+    canvas.innerHTML = "";
+    display.textContent = code;
+    if (typeof qrcode !== "undefined") {
+      try {
+        const qr = qrcode(0, "M");
+        const joinUrl = `${location.origin}?room=${code}`;
+        qr.addData(joinUrl);
+        qr.make();
+        canvas.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 1 });
+      } catch (e) {
+        console.warn("QR generation failed:", e);
+      }
+    }
+    section.hidden = false;
   }
 
   function setMenuView(view) {
@@ -695,6 +724,7 @@ function onSplashComplete() {
     save();
     setMenuView("room");
     syncRoomView(message);
+    generateRoomQR(data.code);
     startPolling();
   }
 
@@ -766,6 +796,85 @@ function onSplashComplete() {
       $("online-message").textContent = "Invite link copied. Send it to your friend!";
     } catch {
       $("online-message").textContent = `Share this code: ${online?.code || ""}.`;
+    }
+  }
+
+  async function scanQRCode() {
+    const scanBtn = $("online-scan");
+    const msg = $("online-message");
+    const codeInput = $("online-code");
+
+    // Check if BarcodeDetector is supported
+    if (!window.BarcodeDetector) {
+      msg.textContent = "QR scanning not supported in this browser. Enter the code manually.";
+      return;
+    }
+
+    scanBtn.disabled = true;
+    scanBtn.innerHTML = '<svg class="icon spin" aria-hidden="true"><use href="#i-refresh"/></svg><span>Scanning…</span>';
+    msg.textContent = "Point camera at a QR code…";
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("autoplay", "");
+      await video.play();
+
+      const detector = new BarcodeDetector({ formats: ["qr_code"] });
+
+      let scanning = true;
+      const scanLoop = async () => {
+        if (!scanning) return;
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes.length > 0) {
+            scanning = false;
+            const raw = barcodes[0].rawValue;
+            stream.getTracks().forEach(t => t.stop());
+            const match = raw.match(/[?&]room=([A-Z0-9]{5})/i);
+            const code = match ? match[1].toUpperCase() : raw.trim().toUpperCase().slice(0, 5);
+            if (/^[A-Z0-9]{5}$/.test(code)) {
+              codeInput.value = code;
+              msg.textContent = "";
+              joinRoom(code);
+            } else {
+              msg.textContent = "QR code did not contain a valid room code.";
+            }
+            return;
+          }
+        } catch (e) {
+          // Ignore detection errors
+        }
+        if (scanning) requestAnimationFrame(scanLoop);
+      };
+      scanLoop();
+
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        if (scanning) {
+          scanning = false;
+          stream.getTracks().forEach(t => t.stop());
+          msg.textContent = "Scan timed out. Try again or enter the code manually.";
+        }
+      }, 30000);
+
+    } catch (err) {
+      stream?.getTracks?.().forEach(t => t.stop());
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        msg.textContent = "Camera permission denied. Enter the room code manually.";
+      } else if (err.name === "NotFoundError") {
+        msg.textContent = "No camera found. Enter the room code manually.";
+      } else {
+        msg.textContent = "Could not start camera. Enter the room code manually.";
+      }
+    } finally {
+      scanBtn.disabled = false;
+      scanBtn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan QR</span>';
     }
   }
 
@@ -1273,6 +1382,7 @@ function startGame(options = {}) {
   $("online-code").addEventListener("input", event => {
     event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
   });
+  $("online-scan").addEventListener("click", scanQRCode);
   $("online-copy").addEventListener("click", copyInvite);
   $("online-enter").addEventListener("click", enterOnlineBoard);
   $("online-leave").addEventListener("click", leaveRoom);

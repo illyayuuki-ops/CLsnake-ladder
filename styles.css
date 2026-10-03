@@ -603,6 +603,22 @@ legend { font-size: 11px; font-weight: 650; padding: 0; margin-bottom: 9px; }
 .online-join-row input:focus-visible { outline: 3px solid #cfe6b6; outline-offset: 2px; }
 .online-message { font-size: clamp(8.5px, 1.35vh, 11px); line-height: 1.4; color: #c3d7b6; max-width: 46ch; min-height: 1em; }
 .room-code { display: inline-block; padding: 2px 10px; border-radius: 9px; background: #ffffff1c; letter-spacing: 4px; font-weight: 750; }
+
+/* QR code styles */
+.qr-section { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: clamp(8px, 1.5vh, 14px); padding-top: clamp(8px, 1.5vh, 14px); border-top: 1px solid rgba(255, 255, 255, .12); width: 100%; }
+.qr-label { font-size: clamp(9px, 1.4vh, 11px); color: #c3d7b6; text-transform: uppercase; letter-spacing: 1px; }
+.qr-canvas { display: inline-flex; align-items: center; justify-content: center; min-width: 160px; max-width: min(220px, 70vw); aspect-ratio: 1; border-radius: 12px; background: #ffffff; padding: 8px; box-shadow: 0 4px 24px rgba(0, 0, 0, .25); }
+.qr-canvas svg, .qr-canvas canvas { max-width: 100%; height: auto; }
+.room-code-display { font-size: clamp(11px, 2vh, 14px); letter-spacing: 6px; font-weight: 700; color: #f6f9ee; font-family: "DM Sans", monospace; }
+
+/* Scan button */
+.online-join-row { display: flex; gap: 8px; align-items: stretch; }
+.online-join-row .secondary-button { display: inline-flex; align-items: center; gap: 6px; padding: clamp(7px, 1.2vh, 10px) 11px; white-space: nowrap; }
+.online-join-row .secondary-button .icon { width: 18px; height: 18px; }
+
+/* Camera permission error */
+.scan-error { font-size: clamp(8.5px, 1.35vh, 11px); color: #fb7185; margin-top: 4px; min-height: 1.2em; text-align: center; }
+
 @media (max-height: 470px) {
   .menu-mark { display: none; }
   .menu-tagline { display: none; }
