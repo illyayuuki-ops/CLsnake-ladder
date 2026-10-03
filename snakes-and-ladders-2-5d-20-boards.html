@@ -221,13 +221,38 @@
           <p class="menu-tagline">Create a room to share, or join with a code.</p>
           <div class="online-actions">
             <button class="primary-button menu-button" id="online-create"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><span>Create room</span></button>
-            <form class="online-join" id="online-join-form" novalidate>
+          </div>
+          <div class="online-create-options" hidden>
+            <p class="menu-tagline">Choose your color</p>
+            <div class="color-picker-row" id="online-create-color-picker">
+              <button type="button" class="color-swatch" data-color="blue" style="background:blue" aria-label="Blue"></button>
+              <button type="button" class="color-swatch" data-color="red" style="background:red" aria-label="Red"></button>
+              <button type="button" class="color-swatch" data-color="green" style="background:green" aria-label="Green"></button>
+              <button type="button" class="color-swatch" data-color="yellow" style="background:yellow" aria-label="Yellow"></button>
+              <button type="button" class="color-swatch" data-color="white" style="background:white;border:1px solid #ccc" aria-label="White"></button>
+              <button type="button" class="color-swatch" data-color="black" style="background:black" aria-label="Black"></button>
+            </div>
+            <input type="hidden" id="online-create-color" value="blue">
+            <button class="primary-button menu-button" id="online-create-confirm"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><span>Create room</span></button>
+            <button class="text-button menu-button" id="online-create-cancel"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg><span>Back</span></button>
+          </div>
+          <form class="online-join" id="online-join-form" novalidate>
               <label for="online-code">Room code</label>
               <div class="online-join-row">
                 <input id="online-code" name="code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC12" aria-describedby="online-help">
                 <button class="secondary-button" id="online-join" type="submit">Join</button>
                 <button class="secondary-button" id="online-scan" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan QR</span></button>
               </div>
+            <p class="menu-tagline">Choose your color</p>
+            <div class="color-picker-row" id="online-join-color-picker">
+              <button type="button" class="color-swatch" data-color="blue" style="background:blue" aria-label="Blue"></button>
+              <button type="button" class="color-swatch" data-color="red" style="background:red" aria-label="Red"></button>
+              <button type="button" class="color-swatch" data-color="green" style="background:green" aria-label="Green"></button>
+              <button type="button" class="color-swatch" data-color="yellow" style="background:yellow" aria-label="Yellow"></button>
+              <button type="button" class="color-swatch" data-color="white" style="background:white;border:1px solid #ccc" aria-label="White"></button>
+              <button type="button" class="color-swatch" data-color="black" style="background:black" aria-label="Black"></button>
+            </div>
+            <input type="hidden" id="online-join-color" value="blue">
             </form>
           </div>
           <p class="online-message" id="online-message" role="status" aria-live="polite">Rooms are shared through this game's own server. The first player rolls first.</p>

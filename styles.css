@@ -659,6 +659,16 @@ legend { font-size: 11px; font-weight: 650; padding: 0; margin-bottom: 9px; }
 #lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: clamp(12px, 2.5vh, 20px); }
 #lobby-start:disabled { opacity: .4; cursor: not-allowed; }
 
+/* Online create/join color picker */
+.online-create-options { display: flex; flex-direction: column; gap: 10px; margin-top: clamp(10px, 2vh, 16px); padding-top: clamp(10px, 2vh, 16px); border-top: 1px solid rgba(255, 255, 255, .12); width: 100%; }
+.color-picker-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.color-swatch { width: 32px; height: 32px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.selected { border-color: #fff; transform: scale(1.15); box-shadow: 0 0 0 2px rgba(255, 255, 255, .4); }
+.color-swatch:focus-visible { outline: 3px solid #cfe6b6; outline-offset: 2px; }
+.online-create-options { display: flex; flex-direction: column; gap: 10px; margin-top: clamp(10px, 2vh, 16px); padding-top: clamp(10px, 2vh, 16px); border-top: 1px solid rgba(255, 255, 255, .12); width: 100%; }
+.online-create-options .color-picker-row { margin-bottom: 4px; }
+
 @media (max-height: 470px) {
   .menu-mark { display: none; }
   .menu-tagline { display: none; }

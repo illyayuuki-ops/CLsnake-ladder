@@ -6,6 +6,7 @@
   const NS = "http://www.w3.org/2000/svg";
   const SAVE_KEY = "snakes-and-ladders:v2";
   const COLORS = ["#ca705e", "#5b91ac"];
+  const DEFAULT_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const BOARDS_PER_PAGE = 4;
   // Kept from the original game for fast, deterministic animation tests.
@@ -901,7 +902,8 @@ function syncRoomView(message) {
     if (authSkipped && !authToken) await ensureGuestAuth();
     $("online-message").textContent = "Creating your room…";
     try {
-      const data = await api("api/rooms", { name: game.players[0].name });
+      const color = $("online-create-color")?.value || "blue";
+      const data = await api("api/rooms", { name: game.players[0].name, color });
       adoptRoom(data, `Room ${data.code} is ready. Share the code with your friend.`);
     } catch (error) { $("online-message").textContent = error.message; }
   }
@@ -916,7 +918,8 @@ function syncRoomView(message) {
     }
     $("online-message").textContent = `Joining room ${code}…`;
     try {
-      adoptRoom(await api(`api/rooms/${code}/join`, { name: game.players[0].name }), `You joined room ${code}.`);
+      const color = $("online-join-color")?.value || "blue";
+      adoptRoom(await api(`api/rooms/${code}/join`, { name: game.players[0].name, color }), `You joined room ${code}.`);
     } catch (error) { $("online-message").textContent = error.message; }
   }
 
@@ -1797,10 +1800,30 @@ function startGame(options = {}) {
     status(`Welcome back! ${game.players[game.turn].name}’s turn.`);
   });
   $("menu-rejoin").addEventListener("click", rejoinRoom);
-  $("online-create").addEventListener("click", createRoom);
+  $("online-create").addEventListener("click", () => {
+    $("online-actions").hidden = true;
+    $("online-join-form").hidden = true;
+    $("online-create-options").hidden = false;
+  });
+  $("online-create-cancel").addEventListener("click", () => {
+    $("online-create-options").hidden = true;
+    $("online-actions").hidden = false;
+    $("online-join-form").hidden = false;
+  });
+  $("online-create-confirm").addEventListener("click", createRoom);
   $("online-join-form").addEventListener("submit", event => { event.preventDefault(); joinRoom($("online-code").value); });
   $("online-code").addEventListener("input", event => {
     event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
+  });
+  // Color picker handlers
+  document.querySelectorAll('#online-create-color-picker .color-swatch, #online-join-color-picker .color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      const picker = swatch.closest('.color-picker-row');
+      const input = picker.id === 'online-create-color-picker' ? 'online-create-color' : 'online-join-color';
+      document.querySelectorAll(`#${picker.id} .color-swatch`).forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+      $(input).value = swatch.dataset.color;
+    });
   });
   $("online-scan").addEventListener("click", scanQRCode);
   $("online-copy").addEventListener("click", copyInvite);
