@@ -240,3 +240,87 @@ test("all twenty actual JPG files remain available", () => {
     assert.ok(fs.statSync(path.join(__dirname, "..", `snakes-and-ladders-board-${String(i).padStart(2, "0")}.jpg`)).size > 1000);
   }
 });
+
+test("createGame supports 3 players with custom names and colors", () => {
+  const game = Game.createGame({
+    mode: "online",
+    names: ["Alice", "Bob", "Carol"],
+    colors: ["blue", "red", "green"]
+  });
+  assert.equal(game.players.length, 3);
+  assert.deepEqual(game.players.map(p => p.name), ["Alice", "Bob", "Carol"]);
+  assert.deepEqual(game.players.map(p => p.color), ["blue", "red", "green"]);
+  assert.deepEqual(game.players.map(p => p.position), [1, 1, 1]);
+  assert.equal(game.turn, 0);
+  assert.equal(game.totalRolls, 0);
+  assert.equal(game.winner, null);
+  assert.equal(game.mode, "online");
+});
+
+test("createGame supports 4 players with custom names and colors", () => {
+  const game = Game.createGame({
+    mode: "online",
+    names: ["Alice", "Bob", "Carol", "Dave"],
+    colors: ["blue", "red", "green", "yellow"]
+  });
+  assert.equal(game.players.length, 4);
+  assert.deepEqual(game.players.map(p => p.name), ["Alice", "Bob", "Carol", "Dave"]);
+  assert.deepEqual(game.players.map(p => p.color), ["blue", "red", "green", "yellow"]);
+  assert.equal(game.turn, 0);
+});
+
+test("turn cycles correctly for 3 players", () => {
+  const game = Game.createGame({ mode: "online", names: ["A", "B", "C"] });
+  // Player 0 rolls
+  let result = Game.applyRoll(game, 1);
+  assert.equal(result.entry.player, 0);
+  assert.equal(result.state.turn, 1);
+  // Player 1 rolls
+  result = Game.applyRoll(result.state, 1);
+  assert.equal(result.entry.player, 1);
+  assert.equal(result.state.turn, 2);
+  // Player 2 rolls
+  result = Game.applyRoll(result.state, 1);
+  assert.equal(result.entry.player, 2);
+  assert.equal(result.state.turn, 0); // cycles back to player 0
+  // Player 0 rolls again
+  result = Game.applyRoll(result.state, 1);
+  assert.equal(result.entry.player, 0);
+  assert.equal(result.state.turn, 1);
+});
+
+test("turn cycles correctly for 4 players", () => {
+  let game = Game.createGame({ mode: "online", names: ["A", "B", "C", "D"] });
+  const turns = [];
+  for (let i = 0; i < 10; i++) {
+    const result = Game.applyRoll(game, 1);
+    turns.push(result.entry.player);
+    game = result.state;
+  }
+  assert.deepEqual(turns, [0, 1, 2, 3, 0, 1, 2, 3, 0, 1]);
+});
+
+test("overshoot does not advance turn in N-player games", () => {
+  const game = Game.createGame({ mode: "online", names: ["A", "B", "C"] });
+  // Put player 0 at 98
+  game.players[0].position = 98;
+  const result = Game.applyRoll(game, 4);
+  assert.equal(result.entry.type, "overshoot");
+  assert.equal(result.state.players[0].position, 98);
+  assert.equal(result.state.turn, 1); // turn passes to next player
+  // Next player rolls
+  const result2 = Game.applyRoll(result.state, 2);
+  assert.equal(result2.state.turn, 2);
+});
+
+test("win detection works for N players", () => {
+  const game = Game.createGame({ mode: "online", names: ["A", "B", "C", "D"] });
+  // Put player 2 at 97
+  game.players[2].position = 97;
+  game.turn = 2;
+  const result = Game.applyRoll(game, 3);
+  assert.equal(result.state.winner, 2);
+  assert.equal(result.state.turn, 2); // winner keeps turn
+  assert.equal(result.state.players[2].position, 100);
+  assert.throws(() => Game.applyRoll(result.state, 1), /finished/);
+});
