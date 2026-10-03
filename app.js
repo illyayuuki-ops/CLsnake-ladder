@@ -144,7 +144,7 @@ function onSplashComplete() {
   // Load auth from localStorage
   function loadAuth() {
     try {
-      const raw = localStorage.getItem("snake-ladder:auth");
+      const raw = localStorage.getItem("snl.session");
       if (raw) {
         const saved = JSON.parse(raw);
         if (saved.token && saved.username) {
@@ -159,7 +159,7 @@ function onSplashComplete() {
 
   function saveAuth() {
     if (authToken && authUsername) {
-      localStorage.setItem("snake-ladder:auth", JSON.stringify({ token: authToken, username: authUsername }));
+      localStorage.setItem("snl.session", JSON.stringify({ token: authToken, username: authUsername }));
       localStorage.setItem("authToken", authToken);
     }
   }
@@ -168,7 +168,7 @@ function onSplashComplete() {
     authToken = null;
     authUsername = null;
     authSkipped = false;
-    localStorage.removeItem("snake-ladder:auth");
+    localStorage.removeItem("snl.session");
     localStorage.removeItem("snake-ladder:guest");
     localStorage.removeItem("authToken");
   }
@@ -835,8 +835,8 @@ function syncRoomView(message) {
     status(kind === "ladder" ? "Nine lucky shortcuts. Land at a ladder’s foot to climb to its top." : "Ten little twists. Land on a snake’s head to slide to its tail.", kind);
   }
 
-  const onlineReady = () => !online || Boolean(online.seats[0] && online.seats[1]);
-  const onlineMyTurn = () => !online || (onlineReady() && game.turn === online.player);
+  const onlineReady = () => online && online.status === "playing";
+  const onlineMyTurn = () => online && online.status === "playing" && game.turn === online.player;
 
   function stopPolling() {
     clearTimeout(onlinePoll);
@@ -882,12 +882,12 @@ function syncRoomView(message) {
   }
 
   function adoptRoom(data, message) {
-    online = { code: data.code, player: data.player, version: data.version, seats: [...data.seats], names: [...data.names], colors: [...data.colors], ready: [...data.ready], status: data.status, host: data.host, isPublic: data.isPublic, pending: data.pending || null };
+    online = { code: data.code, player: data.player, version: data.version, seats: [...data.seats], names: [...data.names], colors: [...data.colors], ready: [...data.ready], status: data.status, host: data.host, isPublic: data.isPublic, boardIndex: data.boardIndex, pending: data.pending || null };
     savedOnline = { code: data.code, player: data.player };
     onlineEntered = false;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
-    // Only apply game state if it exists (not in lobby)
-    if (data.state) {
+    // Only apply game state if status is "playing" (state field arrives in snapshot)
+    if (data.status === "playing" && data.state) {
       applyRoomState(data.state, {});
     }
     save();
@@ -1319,6 +1319,7 @@ function syncRoomView(message) {
     online.status = data.status;
     online.host = data.host;
     online.isPublic = data.isPublic;
+    online.boardIndex = data.boardIndex;
     online.pending = data.pending || null;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
     const entry = data.last && data.state && data.state.totalRolls > game.totalRolls ? data.last : null;

@@ -292,6 +292,11 @@
           <h3 class="menu-title">Room <span class="room-code" id="lobby-code">-----</span></h3>
           <p class="menu-tagline" id="lobby-status">Set up your game and get ready.</p>
           <div class="lobby-seats" id="lobby-seats" role="list" aria-label="Player seats"></div>
+          <div class="qr-section" hidden>
+            <p class="qr-label">Scan to join</p>
+            <div class="qr-canvas" id="qr-canvas" aria-label="QR code for room"></div>
+            <p class="room-code-display" id="room-code-display"></p>
+          </div>
           <div class="menu-actions" id="lobby-actions">
             <button class="secondary-button menu-button" id="lobby-copy"><svg class="icon" aria-hidden="true"><use href="#i-link"/></svg><span>Copy invite link</span></button>
             <button class="primary-button menu-button" id="lobby-start" hidden><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Start game</span></button>
