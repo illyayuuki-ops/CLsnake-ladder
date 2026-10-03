@@ -228,7 +228,9 @@
     return { x: ARTWORK_GRID.inset + point.x * scale, y: ARTWORK_GRID.inset + point.y * scale };
   }
 
-  function cleanName(value, fallback) {
+  const DEFAULT_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
+
+function cleanName(value, fallback) {
     if (typeof value !== "string") return fallback;
     return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 24) || fallback;
   }
@@ -236,17 +238,27 @@
   function createGame(options = {}) {
     const boardIndex = options.boardIndex ?? 0;
     if (!validInteger(boardIndex, 0, BOARDS.length - 1)) throw new RangeError("Unknown board.");
-    if (options.mode && !["local", "computer"].includes(options.mode)) throw new TypeError("Unknown game mode.");
+    if (options.mode && !["local", "computer", "online"].includes(options.mode)) throw new TypeError("Unknown game mode.");
     const mode = options.mode || "local";
     const names = options.names || [];
+    const colors = options.colors || [];
+    const playerCount = Math.max(2, Math.min(4, names.length));
+    const players = [];
+    for (let i = 0; i < playerCount; i++) {
+      players.push({
+        name: cleanName(names[i], `Player ${i + 1}`),
+        color: colors[i] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+        position: 1,
+        rolls: 0,
+        climbs: 0,
+        slides: 0,
+      });
+    }
     return {
       version: STATE_VERSION,
       boardIndex,
       mode,
-      players: [
-        { name: cleanName(names[0], "Player 1"), position: 1, rolls: 0, climbs: 0, slides: 0 },
-        { name: mode === "computer" ? "Fern" : cleanName(names[1], "Player 2"), position: 1, rolls: 0, climbs: 0, slides: 0 },
-      ],
+      players,
       turn: 0,
       totalRolls: 0,
       winner: null,
@@ -274,6 +286,7 @@
     if (game.winner !== null) throw new Error("This game has already finished.");
     const board = BOARDS[game.boardIndex];
     const playerIndex = game.turn;
+    const playerCount = game.players.length;
     const from = game.players[playerIndex].position;
     const steps = [];
     let landed = from;
@@ -300,12 +313,13 @@
     if (type === "ladder") player.climbs++;
     if (type === "snake") player.slides++;
     const entry = { sequence: game.totalRolls + 1, player: playerIndex, die, from, landed, to, type };
+    const nextTurn = to === 100 ? playerIndex : (playerIndex + 1) % playerCount;
     const state = {
       ...game,
       players,
       totalRolls: entry.sequence,
       winner: to === 100 ? playerIndex : null,
-      turn: to === 100 ? playerIndex : 1 - playerIndex,
+      turn: nextTurn,
       history: [entry, ...game.history.map(item => ({ ...item }))].slice(0, HISTORY_LIMIT),
     };
     return { state, steps, jump, entry };

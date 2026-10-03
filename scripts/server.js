@@ -41,6 +41,8 @@ function cleanName(value, fallback) {
   return name || fallback;
 }
 
+const DEFAULT_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
+
 function validateUsername(username) {
   return typeof username === "string" && /^[a-zA-Z0-9_]{2,16}$/.test(username);
 }
@@ -80,6 +82,18 @@ function requireAuth(request) {
   const auth = request.headers.authorization;
   if (!auth || !auth.startsWith("Bearer ")) return null;
   return getUsernameFromToken(auth.slice(7));
+}
+
+function getNextColor(room) {
+  const used = new Set(room.colors.filter(Boolean));
+  for (const color of DEFAULT_COLORS) if (!used.has(color)) return color;
+  return DEFAULT_COLORS[0];
+}
+
+function assignColors(room) {
+  while (room.colors.length < room.seats.length) {
+    room.colors.push(getNextColor(room));
+  }
 }
 
 function sendJson(response, status, payload) {
@@ -233,7 +247,9 @@ async function handleRiddleApi(request, response, parts) {
 function snapshot(room, player) {
   return {
     code: room.code, version: room.version, boardIndex: room.boardIndex,
-    player, seats: [...room.seats], names: [...room.names], state: room.state, last: room.last,
+    player, seats: [...room.seats], names: [...room.names], colors: [...room.colors],
+    ready: [...room.ready], status: room.status, host: room.host, isPublic: room.isPublic,
+    state: room.state, last: room.last,
     pending: room.pending ? { ...room.pending } : null,
   };
 }
@@ -248,9 +264,16 @@ function flush(room) {
 function freshState(room) {
   // Re-randomize board on every new game/rematch so both seats get a different board
   room.boardIndex = Math.floor(Math.random() * BOARDS.length);
-  room.state = createGame({ boardIndex: room.boardIndex, names: [...room.names] });
+  const seatedNames = room.names.filter((_, i) => room.seats[i]);
+  const seatedColors = room.colors.filter((_, i) => room.seats[i]);
+  room.state = createGame({ boardIndex: room.boardIndex, names: seatedNames, colors: seatedColors });
+  room.status = "playing";
   room.last = null;
   room.pending = null;
+  // Reset ready for all seated players
+  for (let i = 0; i < room.ready.length; i++) {
+    if (room.seats[i]) room.ready[i] = false;
+  }
 }
 
 function touch(room) {
@@ -293,6 +316,75 @@ async function handleApi(request, response, pathname, search) {
     return sendJson(response, 405, { error: "That auth action is not supported." });
   }
 
+  if (parts[1] === "queue") {
+    if (request.method !== "POST") return sendJson(response, 405, { error: "That queue action is not supported." });
+    const body = await readJson(request);
+    const token = body.token;
+    const username = getUsernameFromToken(token);
+    if (!username) return sendJson(response, 401, { error: "Invalid or expired token." });
+    if (parts[2] === "leave") {
+      // Find and remove from any public queue
+      for (const [code, room] of rooms) {
+        if (room.isPublic && room.status === "lobby") {
+          const idx = room.seats.findIndex((s, i) => s && room.names[i] === username);
+          if (idx >= 0) {
+            room.seats[idx] = false;
+            room.names[idx] = `Player ${idx + 1}`;
+            room.colors[idx] = "";
+            room.ready[idx] = false;
+            if (room.host === idx) {
+              // Find next seated player as host
+              const nextHost = room.seats.findIndex(s => s);
+              room.host = nextHost >= 0 ? nextHost : 0;
+            }
+            touch(room);
+            flush(room);
+            // Clean up empty public rooms
+            if (!room.seats.some(s => s)) {
+              rooms.delete(code);
+            }
+            return sendJson(response, 200, { left: true });
+          }
+        }
+      }
+      return sendJson(response, 200, { left: false });
+    }
+    // Join or create public lobby
+    // Find existing public lobby with free seat
+    let targetRoom = null;
+    for (const [code, room] of rooms) {
+      if (room.isPublic && room.status === "lobby" && room.seats.filter(s => s).length < 4) {
+        targetRoom = room;
+        break;
+      }
+    }
+    if (!targetRoom) {
+      // Create new public lobby
+      const boardIndex = Math.floor(Math.random() * BOARDS.length);
+      targetRoom = {
+        code: makeCode(), boardIndex,
+        seats: [true, false, false, false], names: [username, "", "", ""], colors: ["blue", "", "", ""], ready: [false, false, false, false],
+        status: "lobby", host: 0, isPublic: true,
+        version: 1, last: null, pending: null, waiters: [], state: null,
+        createdAt: Date.now(), updatedAt: Date.now(),
+      };
+      assignColors(targetRoom);
+      rooms.set(targetRoom.code, targetRoom);
+    } else {
+      // Join existing public lobby
+      const seatIndex = targetRoom.seats.findIndex(s => !s);
+      if (seatIndex >= 0) {
+        targetRoom.seats[seatIndex] = true;
+        targetRoom.names[seatIndex] = username;
+        targetRoom.ready[seatIndex] = false;
+        assignColors(targetRoom);
+        touch(targetRoom);
+        flush(targetRoom);
+      }
+    }
+    return sendJson(response, 200, { ...snapshot(targetRoom, targetRoom.seats.findIndex((s, i) => s && targetRoom.names[i] === username)), player: targetRoom.seats.findIndex((s, i) => s && targetRoom.names[i] === username) });
+  }
+
   if (parts[1] === "riddles") return handleRiddleApi(request, response, parts);
   const code = (parts[2] || "").toUpperCase();
   const action = parts[3] || "";
@@ -304,11 +396,13 @@ async function handleApi(request, response, pathname, search) {
     const boardIndex = Math.floor(Math.random() * BOARDS.length);
     const name = cleanName(body.name, "Player 1");
     const created = {
-      code: makeCode(), boardIndex, seats: [true, false], names: [name, "Player 2"],
+      code: makeCode(), boardIndex,
+      seats: [true, false, false, false], names: [name, "", "", ""], colors: ["blue", "", "", ""], ready: [false, false, false, false],
+      status: "lobby", host: 0, isPublic: false,
       version: 1, last: null, pending: null, waiters: [], state: null,
       createdAt: Date.now(), updatedAt: Date.now(),
     };
-    freshState(created);
+    assignColors(created);
     rooms.set(created.code, created);
     return sendJson(response, 201, { ...snapshot(created, 0), player: 0 });
   }
@@ -318,57 +412,132 @@ async function handleApi(request, response, pathname, search) {
 
   if (request.method === "POST" && action === "join") {
     const body = await readJson(request);
-    if (room.seats[1]) return sendJson(response, 409, { error: "That room already has two players." });
-    room.seats[1] = true;
-    room.names[1] = cleanName(body.name, "Player 2");
-    room.state = createGame({ boardIndex: room.boardIndex, names: [...room.names] });
-    room.last = null;
+    // Check if already in room
+    const existingIdx = room.seats.findIndex((s, i) => s && room.names[i] === body.name);
+    if (existingIdx >= 0) {
+      room.seats[existingIdx] = true;
+      room.ready[existingIdx] = false;
+      touch(room);
+      flush(room);
+      return sendJson(response, 200, { ...snapshot(room, existingIdx), player: existingIdx });
+    }
+    // Find free seat (max 4)
+    const freeIdx = room.seats.findIndex(s => !s);
+    if (freeIdx === -1 || room.seats.filter(s => s).length >= 4) {
+      return sendJson(response, 409, { error: "That room is full (max 4 players)." });
+    }
+    const color = body.color && DEFAULT_COLORS.includes(body.color) ? body.color : getNextColor(room);
+    if (room.colors.includes(color) && room.colors.filter((c, i) => c === color && room.seats[i]).length > 0) {
+      return sendJson(response, 409, { error: "That color is already taken." });
+    }
+    room.seats[freeIdx] = true;
+    room.names[freeIdx] = cleanName(body.name, `Player ${freeIdx + 1}`);
+    room.colors[freeIdx] = color;
+    room.ready[freeIdx] = false;
+    // If room was in lobby and now has >=2 players, keep in lobby (host must start)
     touch(room);
     flush(room);
-    return sendJson(response, 200, { ...snapshot(room, 1), player: 1 });
+    return sendJson(response, 200, { ...snapshot(room, freeIdx), player: freeIdx });
+  }
+
+  if (request.method === "POST" && action === "ready") {
+    const body = await readJson(request);
+    const player = body.player === 1 ? 1 : 0; // For backward compat, but should use seat index
+    // Find player's seat index
+    const seatIdx = room.seats.findIndex((s, i) => s && (body.seatIndex !== undefined ? i === body.seatIndex : room.names[i] === body.name));
+    if (seatIdx === -1) return sendJson(response, 409, { error: "You are not in this room." });
+    if (room.status !== "lobby") return sendJson(response, 409, { error: "Cannot toggle ready outside lobby." });
+    room.ready[seatIdx] = !room.ready[seatIdx];
+    touch(room);
+    flush(room);
+    return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx });
+  }
+
+  if (request.method === "POST" && action === "start") {
+    const body = await readJson(request);
+    const seatIdx = room.seats.findIndex((s, i) => s && room.names[i] === body.name);
+    if (seatIdx === -1) return sendJson(response, 409, { error: "You are not in this room." });
+    if (seatIdx !== room.host) return sendJson(response, 403, { error: "Only the host can start the game." });
+    if (room.status !== "lobby") return sendJson(response, 409, { error: "Game already started or finished." });
+    const seated = room.seats.filter(s => s).length;
+    if (seated < 2) return sendJson(response, 409, { error: "Need at least 2 players to start." });
+    // Check all non-host seats are ready (or auto-ready if only 2 players)
+    const nonHostReady = room.seats.every((s, i) => !s || i === room.host || room.ready[i]);
+    if (!nonHostReady) return sendJson(response, 409, { error: "All players must be ready before starting." });
+    // Start game
+    room.status = "playing";
+    room.boardIndex = Math.floor(Math.random() * BOARDS.length);
+    room.state = createGame({ boardIndex: room.boardIndex, names: room.names.filter((_, i) => room.seats[i]), colors: room.colors.filter((_, i) => room.seats[i]) });
+    room.last = null;
+    room.pending = null;
+    touch(room);
+    flush(room);
+    return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx });
   }
 
   if (request.method === "POST" && action === "rejoin") {
     const body = await readJson(request);
-    const player = body.player === 1 ? 1 : 0;
-    room.seats[player] = true;
-    if (body.name) room.names[player] = cleanName(body.name, room.names[player]);
+    // Find player's seat by name or index (including empty seats for rejoin)
+    let seatIdx = room.seats.findIndex((s, i) => s && (body.seatIndex !== undefined ? i === body.seatIndex : room.names[i] === body.name));
+    if (seatIdx === -1 && body.seatIndex !== undefined && body.seatIndex >= 0 && body.seatIndex < room.seats.length) {
+      // Allow rejoining an empty seat by seatIndex
+      seatIdx = body.seatIndex;
+    }
+    if (seatIdx === -1) {
+      // Try legacy player index
+      const legacyIdx = body.player === 1 ? 1 : 0;
+      if (room.seats[legacyIdx]) {
+        room.seats[legacyIdx] = true;
+        if (body.name) room.names[legacyIdx] = cleanName(body.name, room.names[legacyIdx]);
+        room.ready[legacyIdx] = false;
+        touch(room);
+        flush(room);
+        return sendJson(response, 200, { ...snapshot(room, legacyIdx), player: legacyIdx });
+      }
+      return sendJson(response, 409, { error: "You are not in this room." });
+    }
+    room.seats[seatIdx] = true;
+    if (body.name) room.names[seatIdx] = cleanName(body.name, room.names[seatIdx]);
+    room.ready[seatIdx] = false;
     touch(room);
     flush(room);
-    return sendJson(response, 200, { ...snapshot(room, player), player });
+    return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx });
   }
 
   if (request.method === "POST" && action === "roll") {
     const body = await readJson(request);
-    const player = body.player === 1 ? 1 : 0;
-    if (!room.seats[0] || !room.seats[1]) return sendJson(response, 409, { error: "Waiting for a second player to join." });
+    // Find player's seat index
+    const seatIdx = room.seats.findIndex((s, i) => s && (body.seatIndex !== undefined ? i === body.seatIndex : room.names[i] === body.name));
+    if (seatIdx === -1) return sendJson(response, 409, { error: "You are not in this room." });
+    if (room.status !== "playing") return sendJson(response, 409, { error: "Game not started yet." });
     if (room.pending) return sendJson(response, 409, { error: "Resolve the pending snake riddle before rolling again." });
     if (room.state.winner !== null) return sendJson(response, 409, { error: "This game is already finished." });
-    if (room.state.turn !== player) return sendJson(response, 409, { error: "It is not your turn yet." });
+    if (room.state.turn !== seatIdx) return sendJson(response, 409, { error: "It is not your turn yet." });
     const die = rollDie();
     const result = applyRoll(room.state, die);
     if (result.entry.type === "snake") {
-      room.pending = { id: randomUUID(), player, die, from: result.entry.from, landed: result.entry.landed, to: result.entry.to };
+      room.pending = { id: randomUUID(), player: seatIdx, die, from: result.entry.from, landed: result.entry.landed, to: result.entry.to };
       touch(room);
       flush(room);
-      return sendJson(response, 200, { ...snapshot(room, player), player });
+      return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx });
     }
     room.state = result.state;
     room.last = { die, player: result.entry.player, sequence: result.entry.sequence, type: result.entry.type, from: result.entry.from, landed: result.entry.landed, to: result.entry.to };
     touch(room);
     flush(room);
-    return sendJson(response, 200, { ...snapshot(room, player), player });
+    return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx });
   }
 
   if (request.method === "POST" && action === "resolve") {
     const body = await readJson(request);
-    const player = body.player === 1 ? 1 : 0;
+    const seatIdx = room.seats.findIndex((s, i) => s && (body.seatIndex !== undefined ? i === body.seatIndex : room.names[i] === body.name));
+    if (seatIdx === -1) return sendJson(response, 409, { error: "You are not in this room." });
     const pending = room.pending;
-    if (!pending || pending.player !== player) return sendJson(response, 409, { error: "That snake turn is no longer waiting for you." });
+    if (!pending || pending.player !== seatIdx) return sendJson(response, 409, { error: "That snake turn is no longer waiting for you." });
     let rescued = false;
     if (body.choice === "riddle") {
       const challenge = riddles.get(body.riddleId);
-      if (!challenge || !challenge.attempted || !challenge.correct || challenge.roomCode !== room.code || challenge.player !== player || challenge.pendingId !== pending.id || challenge.expiresAt <= Date.now()) {
+      if (!challenge || !challenge.attempted || !challenge.correct || challenge.roomCode !== room.code || challenge.player !== seatIdx || challenge.pendingId !== pending.id || challenge.expiresAt <= Date.now()) {
         return sendJson(response, 409, { error: "Solve the current haiku correctly before choosing rescue." });
       }
       rescued = true;
@@ -382,23 +551,67 @@ async function handleApi(request, response, pathname, search) {
     room.pending = null;
     touch(room);
     flush(room);
-    return sendJson(response, 200, { ...snapshot(room, player), player });
+    return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx });
   }
 
   if (request.method === "POST" && action === "leave") {
     const body = await readJson(request);
-    const player = body.player === 1 ? 1 : 0;
-    room.seats[player] = false;
-    room.names[player] = player === 0 ? "Player 1" : "Player 2";
-    freshState(room);
+    // Find player's seat by name or index
+    const seatIdx = room.seats.findIndex((s, i) => s && (body.seatIndex !== undefined ? i === body.seatIndex : room.names[i] === body.name));
+    if (seatIdx === -1) {
+      // Try legacy player index
+      const legacyIdx = body.player === 1 ? 1 : 0;
+      if (room.seats[legacyIdx]) {
+        room.seats[legacyIdx] = false;
+        room.names[legacyIdx] = `Player ${legacyIdx + 1}`;
+        room.colors[legacyIdx] = "";
+        room.ready[legacyIdx] = false;
+        // If host left, promote next seated player
+        if (room.host === legacyIdx) {
+          const nextHost = room.seats.findIndex(s => s);
+          room.host = nextHost >= 0 ? nextHost : 0;
+        }
+        // If room empty, delete it
+        if (!room.seats.some(s => s)) {
+          rooms.delete(room.code);
+        } else if (room.status === "playing") {
+          freshState(room);
+        }
+        touch(room);
+        flush(room);
+        return sendJson(response, 200, { ...snapshot(room, legacyIdx), player: legacyIdx, left: true });
+      }
+      return sendJson(response, 409, { error: "You are not in this room." });
+    }
+    room.seats[seatIdx] = false;
+    room.names[seatIdx] = `Player ${seatIdx + 1}`;
+    room.colors[seatIdx] = "";
+    room.ready[seatIdx] = false;
+    // If host left, promote next seated player
+    if (room.host === seatIdx) {
+      const nextHost = room.seats.findIndex(s => s);
+      room.host = nextHost >= 0 ? nextHost : 0;
+    }
+    // If room empty, delete it
+    if (!room.seats.some(s => s)) {
+      rooms.delete(room.code);
+    } else if (room.status === "playing") {
+      freshState(room);
+    }
     touch(room);
     flush(room);
-    return sendJson(response, 200, { ...snapshot(room, player), player, left: true });
+    return sendJson(response, 200, { ...snapshot(room, seatIdx), player: seatIdx, left: true });
   }
 
   if (request.method === "GET" && !action) {
     const since = Number(new URL(`http://local${search}`).searchParams.get("since"));
-    const player = new URL(`http://local${search}`).searchParams.get("player") === "1" ? 1 : 0;
+    const playerParam = new URL(`http://local${search}`).searchParams.get("player");
+    // Support both legacy player index (0/1) and new seatIndex
+    let player = 0;
+    if (playerParam !== null) {
+      const parsed = parseInt(playerParam, 10);
+      if (!Number.isNaN(parsed)) player = parsed;
+    }
     if (!Number.isFinite(since) || room.version > since) return sendJson(response, 200, snapshot(room, player));
     // Long poll: answer as soon as the other player moves, or quietly after the hold expires.
     const waiter = { response, player, timer: null };

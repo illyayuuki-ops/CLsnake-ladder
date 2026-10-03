@@ -47,7 +47,17 @@ async function makeRoom(origin, name, token) {
   const created = await request(origin, "/api/rooms", { name }, token);
   assert.equal(created.status, 201);
   const joined = await request(origin, `/api/rooms/${created.data.code}/join`, { name: "Riddle friend" }, token);
+  if (joined.status !== 200) console.log("Join error:", joined);
   assert.equal(joined.status, 200);
+  const joinerSeat = joined.data.player;
+  // Mark joiner as ready
+  const readied = await request(origin, `/api/rooms/${created.data.code}/ready`, { name: "Riddle friend", seatIndex: joinerSeat }, token);
+  if (readied.status !== 200) console.log("Ready error:", readied);
+  assert.equal(readied.status, 200);
+  // Start the game (host is player 0, the creator)
+  const started = await request(origin, `/api/rooms/${created.data.code}/start`, { name }, token);
+  if (started.status !== 200) console.log("Start error:", started);
+  assert.equal(started.status, 200);
   return created.data.code;
 }
 
@@ -56,7 +66,7 @@ async function rollToSnakeHead(origin, code) {
   // Roll until we hit a snake (pending is set)
   for (let attempt = 0; attempt < 100; attempt++) {
     for (const player of [0, 1]) {
-      const result = await request(origin, `/api/rooms/${code}/roll`, { player });
+      const result = await request(origin, `/api/rooms/${code}/roll`, { seatIndex: player });
       assert.equal(result.status, 200);
       if (result.data.pending) {
         pending = result.data.pending;
@@ -96,7 +106,7 @@ test("Gemini haiku challenges stay server-side and resolve shared snake turns", 
   });
   assert.deepEqual(wrongAnswer, { status: 200, data: { correct: false, answer: "moon" } });
   const slide = await request(origin, `/api/rooms/${slideRoom}/resolve`, {
-    player: slidePending.player, choice: "slide", riddleId: wrongChallenge.data.id,
+    seatIndex: slidePending.player, choice: "slide", riddleId: wrongChallenge.data.id,
   });
   assert.equal(slide.status, 200);
   assert.equal(slide.data.pending, null);
@@ -120,7 +130,7 @@ test("Gemini haiku challenges stay server-side and resolve shared snake turns", 
   });
   assert.deepEqual(answer, { status: 200, data: { correct: true } });
   const rescue = await request(origin, `/api/rooms/${rescueRoom}/resolve`, {
-    player: rescuePending.player, choice: "riddle", riddleId: challenge.data.id,
+    seatIndex: rescuePending.player, choice: "riddle", riddleId: challenge.data.id,
   });
   assert.equal(rescue.status, 200);
   assert.equal(rescue.data.pending, null);
@@ -157,9 +167,10 @@ test("Server picks random board for each room and re-randomizes on rematch", asy
   // Test rematch re-randomizes board
   const roomCode = await makeRoom(origin, "RematchTest");
   const firstBoard = (await request(origin, `/api/rooms/${roomCode}`)).data.boardIndex;
-  await request(origin, `/api/rooms/${roomCode}/leave`, { player: 0 });
+  await request(origin, `/api/rooms/${roomCode}/leave`, { seatIndex: 0 });
   // After leave, freshState is called which should re-randomize
-  const secondState = await request(origin, `/api/rooms/${roomCode}/rejoin`, { player: 0, name: "RematchTest" });
+  const secondState = await request(origin, `/api/rooms/${roomCode}/rejoin`, { seatIndex: 0, name: "RematchTest" });
+  console.log("secondState:", JSON.stringify(secondState, null, 2));
   // Note: leave triggers freshState, then rejoin reuses the same room but with new state
   // The boardIndex might be the same by chance, but we verify it's a valid integer
   assert.ok(Number.isInteger(secondState.data.boardIndex));
