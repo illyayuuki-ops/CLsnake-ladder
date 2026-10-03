@@ -46,16 +46,12 @@ body {
   width: min(280px, 50vw);
   aspect-ratio: 1;
 }
-.logo svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  animation: pop 1s cubic-bezier(.2, 1.4, .4, 1) both, float 3.2s ease-in-out 1s infinite;
-  filter: drop-shadow(0 14px 26px rgba(0, 0, 0, .4));
-}
 #splash #logo {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
   animation: logo-float 2.2s ease-in-out infinite;
-  filter: drop-shadow(0 8px 14px rgba(35, 61, 50, .25));
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .35));
 }
 .ring {
   position: absolute;
@@ -98,11 +94,6 @@ h1 { margin: 0; font-size: clamp(24px, 5vw, 34px); font-weight: 600; letter-spac
 @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes roll { to { transform: rotate(360deg); } }
 @keyframes hop { 50% { transform: translateY(-8px); } }
-
-#splash #logo {
-  animation: logo-float 2.2s ease-in-out infinite;
-  filter: drop-shadow(0 8px 14px rgba(35, 61, 50, .25));
-}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

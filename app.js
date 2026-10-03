@@ -62,94 +62,24 @@ let lastSheetTrigger = null;
 
 // Splash loader
 let splashLoader = null;
-let splashProgress = 0;
 let splashCompleted = false;
-let splashFallbackTimer = null;
-let splashStartTime = 0;
-const MIN_SPLASH_MS = 15000;
-const DEV_SLOW_SPLASH = new URLSearchParams(location.search).has('demo-splash') || false;
+const SPLASH_MS = 15000;
 
 function initSplashLoader() {
   const messages = ['Warming up the board', 'Rolling in the pieces', 'Almost ready'];
-  splashStartTime = performance.now();
-  splashLoader = new SplashLoader({ title: 'Snakes & Ladders', messages });
+  splashLoader = new SplashLoader({
+    title: 'Snakes & Ladders',
+    messages,
+    onComplete: onSplashComplete
+  });
 
-  // (a) font ready
-  document.fonts.ready.then(() => {
-    advanceSplashProgress(0.33);
-  }).catch(() => advanceSplashProgress(0.33)); // fallback if fonts fail
+  // Smooth 0→100 progress over 15s minimum (respect ?fast= for test speedup)
+  splashLoader.simulate(Math.max(1, SPLASH_MS / FAST));
 
-  // (b) game-engine.js already parsed by the time app.js runs (defer script order)
-  advanceSplashProgress(0.66);
-
-  // (c) first board image decode — hook into loadArtwork
-  const originalLoadArtwork = loadArtwork;
-  loadArtwork = function(source) {
-    const image = $("fantasy-art");
-    const epoch = ++artworkEpoch;
-    stopComputerTimer();
-    updateArtworkState("loading");
-
-    const finish = state => {
-      if (epoch !== artworkEpoch || image.getAttribute("src") !== source || artworkState !== "loading") return;
-      updateArtworkState(state);
-      if (state === "ready") {
-        advanceSplashProgress(1.0);
-        scheduleComputer();
-      }
-    };
-
-    image.onload = async () => {
-      try {
-        if (typeof image.decode === "function") await image.decode();
-        if (!image.naturalWidth) throw new Error("The original picture could not decode.");
-        finish("ready");
-      } catch { finish("error"); }
-    };
-    image.onerror = () => finish("error");
-    if (image.getAttribute("src") !== source) image.src = source;
-    if (image.complete) {
-      if (image.naturalWidth) image.onload();
-      else image.onerror();
-    }
-  };
-
-  // Fallback timer: safety net if real loading EXCEEDS 15s (not shortcut at 4s)
-  const fallbackDelay = DEV_SLOW_SPLASH ? (MIN_SPLASH_MS + 2000) : (Math.max(1, MIN_SPLASH_MS / FAST) + 2000);
-  splashFallbackTimer = setTimeout(() => {
-    if (!splashCompleted) {
-      advanceSplashProgress(1.0);
-    }
-  }, fallbackDelay);
-
-  // Skip splash immediately if prefers-reduced-motion AND assets already cached
+  // Respect prefers-reduced-motion: if reduced motion, complete quickly
   if (reducedMotion.matches) {
-    // Check if font and first board image are already cached
-    const fontReady = document.fonts.check('1rem "DM Sans"');
-    const firstBoardImg = $("fantasy-art");
-    const imgCached = firstBoardImg && firstBoardImg.complete && firstBoardImg.naturalWidth > 0;
-    if (fontReady && imgCached) {
-      splashLoader.complete();
-      return;
-    }
-  }
-}
-
-function advanceSplashProgress(p) {
-  if (splashCompleted) return;
-  p = Math.max(splashProgress, Math.min(1, p));
-  if (p <= splashProgress) return;
-  splashProgress = p;
-  if (splashLoader) splashLoader.setProgress(p);
-  if (p >= 1 && !splashCompleted) {
-    splashCompleted = true;
-    if (splashFallbackTimer) clearTimeout(splashFallbackTimer);
-    
-    // Wait for minimum splash duration before hiding (respect ?fast= param for testing)
-    const elapsed = performance.now() - splashStartTime;
-    const minSplashMs = DEV_SLOW_SPLASH ? MIN_SPLASH_MS : Math.max(1, MIN_SPLASH_MS / FAST);
-    const remaining = Math.max(0, minSplashMs - elapsed);
-    setTimeout(onSplashComplete, remaining);
+    splashLoader.complete();
+    return;
   }
 }
 
