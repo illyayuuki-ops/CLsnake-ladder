@@ -240,13 +240,15 @@ function cleanName(value, fallback) {
     if (!validInteger(boardIndex, 0, BOARDS.length - 1)) throw new RangeError("Unknown board.");
     if (options.mode && !["local", "computer", "online"].includes(options.mode)) throw new TypeError("Unknown game mode.");
     const mode = options.mode || "local";
-    const names = options.names || [];
+    const playersInput = options.players || options.names || [];
     const colors = options.colors || [];
-    const playerCount = Math.max(2, Math.min(4, names.length));
+    const playerCount = Math.max(2, Math.min(4, playersInput.length));
     const players = [];
     for (let i = 0; i < playerCount; i++) {
+      const p = playersInput[i];
+      const name = typeof p === "object" && p !== null ? p.name : p;
       players.push({
-        name: cleanName(names[i], `Player ${i + 1}`),
+        name: cleanName(name, `Player ${i + 1}`),
         color: colors[i] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
         position: 1,
         rolls: 0,
@@ -329,10 +331,11 @@ function cleanName(value, fallback) {
   function restoreGame(saved) {
     try {
       if (!saved || saved.version !== STATE_VERSION) return null;
-      if (!validInteger(saved.boardIndex, 0, BOARDS.length - 1) || !["local", "computer"].includes(saved.mode)) return null;
-      if (!Array.isArray(saved.players) || saved.players.length !== 2) return null;
-      if (!validInteger(saved.turn, 0, 1) || !validInteger(saved.totalRolls, 0, 1000000)) return null;
-      if (saved.winner !== null && !validInteger(saved.winner, 0, 1)) return null;
+      if (!validInteger(saved.boardIndex, 0, BOARDS.length - 1) || !["local", "computer", "online"].includes(saved.mode)) return null;
+      if (!Array.isArray(saved.players) || saved.players.length < 2 || saved.players.length > 4) return null;
+      const playerCount = saved.players.length;
+      if (!validInteger(saved.turn, 0, playerCount - 1) || !validInteger(saved.totalRolls, 0, 1000000)) return null;
+      if (saved.winner !== null && !validInteger(saved.winner, 0, playerCount - 1)) return null;
       const fresh = createGame({ boardIndex: saved.boardIndex, mode: saved.mode, names: saved.players.map(player => player?.name) });
       const players = saved.players.map((player, i) => {
         if (!player || typeof player.name !== "string" || !validInteger(player.position, 1, 100)) throw new Error("Invalid player.");
@@ -342,16 +345,19 @@ function cleanName(value, fallback) {
         if (player.climbs + player.slides > player.rolls) throw new Error("Invalid jumps.");
         return { name: fresh.players[i].name, position: player.position, rolls: player.rolls, climbs: player.climbs, slides: player.slides };
       });
-      if (players[0].rolls !== Math.ceil(saved.totalRolls / 2) || players[1].rolls !== Math.floor(saved.totalRolls / 2)) return null;
-      if (saved.winner === null && saved.turn !== saved.totalRolls % 2) return null;
-      if (saved.winner !== null && saved.winner !== (saved.totalRolls - 1) % 2) return null;
+      // Backward compatibility: for 2-player saves, validate turn/roll parity
+      if (playerCount === 2) {
+        if (players[0].rolls !== Math.ceil(saved.totalRolls / 2) || players[1].rolls !== Math.floor(saved.totalRolls / 2)) return null;
+        if (saved.winner === null && saved.turn !== saved.totalRolls % 2) return null;
+        if (saved.winner !== null && saved.winner !== (saved.totalRolls - 1) % 2) return null;
+      }
       if (saved.winner === null && players.some(player => player.position === 100)) return null;
-      if (saved.winner !== null && (players[saved.winner].position !== 100 || players[1 - saved.winner].position === 100 || saved.turn !== saved.winner)) return null;
+      if (saved.winner !== null && (players[saved.winner].position !== 100 || players.some((p, i) => i !== saved.winner && p.position === 100) || saved.turn !== saved.winner)) return null;
       if (!Array.isArray(saved.history) || saved.history.length !== Math.min(saved.totalRolls, HISTORY_LIMIT)) return null;
       const latestPlayers = new Set();
       const history = saved.history.map((entry, i) => {
-        if (!entry || !validInteger(entry.player, 0, 1) || !validInteger(entry.die, 1, 6)) throw new Error("Invalid history.");
-        if (entry.sequence !== saved.totalRolls - i || entry.player !== (entry.sequence - 1) % 2 || !validInteger(entry.from, 1, 99)) throw new Error("Invalid history order.");
+        if (!entry || !validInteger(entry.player, 0, playerCount - 1) || !validInteger(entry.die, 1, 6)) throw new Error("Invalid history.");
+        if (entry.sequence !== saved.totalRolls - i) throw new Error("Invalid history order.");
         if (!latestPlayers.has(entry.player)) {
           if (players[entry.player].position !== entry.to) throw new Error("Position does not match the latest move.");
           latestPlayers.add(entry.player);
