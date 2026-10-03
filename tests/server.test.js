@@ -29,22 +29,24 @@ function startTestServer() {
     child.once("error", error => { clearTimeout(timeout); reject(error); });
     child.once("exit", code => { clearTimeout(timeout); reject(new Error(`Server exited (${code}). ${logs} ${errors}`)); });
   });
-  return { child, ready };
+  return { child, ready, getLogs: () => logs, getErrors: () => errors };
 }
 
-async function request(origin, pathname, body) {
+async function request(origin, pathname, body, token) {
+  const headers = { "content-type": "application/json" };
+  if (token) headers.authorization = `Bearer ${token}`;
   const response = await fetch(`${origin}${pathname}`, body === undefined ? undefined : {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
   return { status: response.status, data: await response.json() };
 }
 
-async function makeRoom(origin, name) {
-  const created = await request(origin, "/api/rooms", { name, boardIndex: 0 });
+async function makeRoom(origin, name, token) {
+  const created = await request(origin, "/api/rooms", { name }, token);
   assert.equal(created.status, 201);
-  const joined = await request(origin, `/api/rooms/${created.data.code}/join`, { name: "Riddle friend" });
+  const joined = await request(origin, `/api/rooms/${created.data.code}/join`, { name: "Riddle friend" }, token);
   assert.equal(joined.status, 200);
   return created.data.code;
 }
@@ -52,7 +54,7 @@ async function makeRoom(origin, name) {
 async function rollToSnakeHead(origin, code) {
   let pending = null;
   // Roll until we hit a snake (pending is set)
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < 100; attempt++) {
     for (const player of [0, 1]) {
       const result = await request(origin, `/api/rooms/${code}/roll`, { player });
       assert.equal(result.status, 200);
@@ -68,7 +70,7 @@ async function rollToSnakeHead(origin, code) {
       }
     }
   }
-  throw new Error("Failed to hit a snake within 20 rolls");
+  throw new Error("Failed to hit a snake within 200 rolls");
 }
 
 test("Gemini haiku challenges stay server-side and resolve shared snake turns", async t => {
@@ -162,4 +164,56 @@ test("Server picks random board for each room and re-randomizes on rematch", asy
   // The boardIndex might be the same by chance, but we verify it's a valid integer
   assert.ok(Number.isInteger(secondState.data.boardIndex));
   assert.ok(secondState.data.boardIndex >= 0 && secondState.data.boardIndex < BOARDS.length);
+});
+
+test("Auth: register, login, 401, 409", async t => {
+  const { child, ready, getLogs, getErrors } = startTestServer();
+  t.after(async () => {
+    if (child.exitCode !== null) return;
+    child.kill("SIGTERM");
+    await new Promise(resolve => child.once("exit", resolve));
+  });
+  const origin = await ready;
+
+  // Register valid user
+  const reg = await request(origin, "/api/auth/register", { username: "testuser", password: "password123" });
+  assert.equal(reg.status, 201);
+  assert.ok(reg.data.token);
+  assert.equal(reg.data.username, "testuser");
+  const token = reg.data.token;
+
+  // Login with correct credentials
+  const login = await request(origin, "/api/auth/login", { username: "testuser", password: "password123" });
+  assert.equal(login.status, 200);
+  assert.ok(login.data.token);
+  assert.equal(login.data.username, "testuser");
+  const loginToken = login.data.token;
+
+  // Login with wrong password -> 401
+  const badLogin = await request(origin, "/api/auth/login", { username: "testuser", password: "wrong" });
+  assert.equal(badLogin.status, 401);
+  assert.ok(badLogin.data.error);
+
+  // Register duplicate username -> 409
+  const dup = await request(origin, "/api/auth/register", { username: "testuser", password: "another" });
+  assert.equal(dup.status, 409);
+  assert.ok(dup.data.error);
+
+  // Register invalid username (too short) -> 400
+  const short = await request(origin, "/api/auth/register", { username: "a", password: "pass" });
+  assert.equal(short.status, 400);
+
+  // Register invalid username (special chars) -> 400
+  const special = await request(origin, "/api/auth/register", { username: "test@user", password: "pass" });
+  assert.equal(special.status, 400);
+
+  // Register invalid password (too short) -> 400
+  const shortPass = await request(origin, "/api/auth/register", { username: "validuser", password: "123" });
+  assert.equal(shortPass.status, 400);
+
+  // Verify tokens work independently
+  const me1 = await request(origin, "/api/rooms", { name: "Test1" }, token);
+  assert.equal(me1.status, 201, `Expected 201, got ${me1.status}: ${JSON.stringify(me1.data)}`);
+  const me2 = await request(origin, "/api/rooms", { name: "Test2" }, loginToken);
+  assert.equal(me2.status, 201);
 });

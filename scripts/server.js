@@ -24,6 +24,10 @@ const RIDDLE_TTL = 5 * 60 * 1000;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const rooms = new Map();
 const riddles = new Map();
+const accounts = new Map();
+const sessions = new Map();
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, dkLen: 32 };
+const ALLOWED_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
 
 function makeCode() {
   let code;
@@ -35,6 +39,47 @@ function makeCode() {
 function cleanName(value, fallback) {
   const name = String(value ?? "").replace(/[<>]/g, "").trim().slice(0, 24);
   return name || fallback;
+}
+
+function validateUsername(username) {
+  return typeof username === "string" && /^[a-zA-Z0-9_]{2,16}$/.test(username);
+}
+
+function validatePassword(password) {
+  return typeof password === "string" && password.length >= 4;
+}
+
+function hashPassword(password, salt) {
+  const crypto = require("node:crypto");
+  return crypto.scryptSync(password, salt, SCRYPT_PARAMS.dkLen, { N: SCRYPT_PARAMS.N, r: SCRYPT_PARAMS.r, p: SCRYPT_PARAMS.p });
+}
+
+function verifyPassword(password, saltHex, hashHex) {
+  const crypto = require("node:crypto");
+  const salt = Buffer.from(saltHex, "hex");
+  const hash = Buffer.from(hashHex, "hex");
+  const computed = hashPassword(password, salt);
+  return crypto.timingSafeEqual(computed, hash);
+}
+
+function createToken() {
+  return randomUUID();
+}
+
+function getUsernameFromToken(token) {
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (session.expiresAt < Date.now()) {
+    sessions.delete(token);
+    return null;
+  }
+  return session.username;
+}
+
+function requireAuth(request) {
+  const auth = request.headers.authorization;
+  if (!auth || !auth.startsWith("Bearer ")) return null;
+  return getUsernameFromToken(auth.slice(7));
 }
 
 function sendJson(response, status, payload) {
@@ -215,6 +260,39 @@ function touch(room) {
 
 async function handleApi(request, response, pathname, search) {
   const parts = pathname.split("/").filter(Boolean);
+
+  if (parts[1] === "auth") {
+    if (request.method !== "POST") return sendJson(response, 405, { error: "That auth action is not supported." });
+    if (parts[2] === "register") {
+      const body = await readJson(request);
+      const username = String(body.username ?? "").trim();
+      const password = String(body.password ?? "");
+      if (!validateUsername(username)) return sendJson(response, 400, { error: "Username must be 2–16 characters (letters, numbers, underscore)." });
+      if (!validatePassword(password)) return sendJson(response, 400, { error: "Password must be at least 4 characters." });
+      if (accounts.has(username.toLowerCase())) return sendJson(response, 409, { error: "That username is already taken." });
+      const crypto = require("node:crypto");
+      const salt = crypto.randomBytes(16);
+      const hash = hashPassword(password, salt);
+      accounts.set(username.toLowerCase(), { salt: salt.toString("hex"), hash: hash.toString("hex") });
+      const token = createToken();
+      sessions.set(token, { username, expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+      return sendJson(response, 201, { token, username });
+    }
+    if (parts[2] === "login") {
+      const body = await readJson(request);
+      const username = String(body.username ?? "").trim().toLowerCase();
+      const password = String(body.password ?? "");
+      const account = accounts.get(username);
+      if (!account || !verifyPassword(password, account.salt, account.hash)) {
+        return sendJson(response, 401, { error: "Invalid username or password." });
+      }
+      const token = createToken();
+      sessions.set(token, { username, expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+      return sendJson(response, 200, { token, username });
+    }
+    return sendJson(response, 405, { error: "That auth action is not supported." });
+  }
+
   if (parts[1] === "riddles") return handleRiddleApi(request, response, parts);
   const code = (parts[2] || "").toUpperCase();
   const action = parts[3] || "";
@@ -349,7 +427,10 @@ const server = http.createServer((request, response) => {
       response.writeHead(405, { Allow: "GET, HEAD, POST" }); response.end(); return;
     }
     handleApi(request, response, parsed.pathname, parsed.search)
-      .catch(error => { if (!response.writableEnded) sendJson(response, error.status || 400, { error: error.message || "That request could not be handled." }); });
+      .catch(error => { 
+        console.error("API Error:", error.message, error.stack);
+        if (!response.writableEnded) sendJson(response, error.status || 400, { error: error.message || "That request could not be handled." }); 
+      });
     return;
   }
 
