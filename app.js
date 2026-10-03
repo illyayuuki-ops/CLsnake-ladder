@@ -135,6 +135,76 @@ function onSplashComplete() {
     $("save-status").textContent = storageAvailable ? "Your progress is saved automatically" : "Saving unavailable — keep this tab open to continue";
   }
 
+  // Auth state
+  let authToken = null;
+  let authUsername = null;
+  let authSkipped = false;
+
+  // Load auth from localStorage
+  function loadAuth() {
+    try {
+      const raw = localStorage.getItem("snake-ladder:auth");
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.token && saved.username) {
+          authToken = saved.token;
+          authUsername = saved.username;
+        }
+      }
+      authSkipped = localStorage.getItem("snake-ladder:guest") === "true";
+    } catch { }
+  }
+
+  function saveAuth() {
+    if (authToken && authUsername) {
+      localStorage.setItem("snake-ladder:auth", JSON.stringify({ token: authToken, username: authUsername }));
+    }
+  }
+
+  function clearAuth() {
+    authToken = null;
+    authUsername = null;
+    authSkipped = false;
+    localStorage.removeItem("snake-ladder:auth");
+    localStorage.removeItem("snake-ladder:guest");
+  }
+
+  // API wrapper with auth
+  async function api(path, body) {
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+    const response = await fetch(path, { method: "POST", headers, body: JSON.stringify(body) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `The game server answered with ${response.status}.`);
+    return data;
+  }
+
+  // Auth API calls
+  async function authLogin(username, password) {
+    const data = await api("api/auth/login", { username, password });
+    authToken = data.token;
+    authUsername = data.username;
+    saveAuth();
+    return data;
+  }
+
+  async function authRegister(username, password) {
+    const data = await api("api/auth/register", { username, password });
+    authToken = data.token;
+    authUsername = data.username;
+    saveAuth();
+    return data;
+  }
+
+  function setGuestMode() {
+    authSkipped = true;
+    localStorage.setItem("snake-ladder:guest", "true");
+  }
+
+  function isAuthenticated() {
+    return authToken !== null;
+  }
+
   function duration(ms) {
     if (reducedMotion.matches) return 0;
     return ms * (preferences.speed === "quick" ? .48 : 1) / FAST;
@@ -672,15 +742,6 @@ function onSplashComplete() {
     status(kind === "ladder" ? "Nine lucky shortcuts. Land at a ladder’s foot to climb to its top." : "Ten little twists. Land on a snake’s head to slide to its tail.", kind);
   }
 
-  const api = async (path, body) => {
-    const options = body === undefined
-      ? { headers: { Accept: "application/json" } }
-      : { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) };
-    const response = await fetch(path, options);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `The game server answered with ${response.status}.`);
-    return data;
-  };
   const onlineReady = () => !online || Boolean(online.seats[0] && online.seats[1]);
   const onlineMyTurn = () => !online || (onlineReady() && game.turn === online.player);
 
@@ -696,7 +757,9 @@ function onSplashComplete() {
     const { code, player, version } = online;
     pollAbort = new AbortController();
     try {
-      const response = await fetch(`api/rooms/${code}?player=${player}&since=${version}`, { headers: { Accept: "application/json" }, signal: pollAbort.signal });
+      const headers = { Accept: "application/json" };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      const response = await fetch(`api/rooms/${code}?player=${player}&since=${version}`, { headers, signal: pollAbort.signal });
       const data = await response.json().catch(() => ({}));
       if (!online || online.code !== code) return;
       if (!response.ok) throw new Error(data.error || "Room unavailable.");
@@ -1369,8 +1432,13 @@ function startGame(options = {}) {
   $("menu-friend").addEventListener("click", () => startGame({ mode: "local" }));
   $("menu-fern").addEventListener("click", () => startGame({ mode: "computer" }));
   $("menu-online").addEventListener("click", () => {
-    setMenuView("online");
-    $("online-message").textContent = "Create a room, or join with a code from a friend.";
+    if (isAuthenticated() || authSkipped) {
+      setMenuView("online");
+      $("online-message").textContent = "Create a room, or join with a code from a friend.";
+    } else {
+      const authDialog = $("auth-dialog");
+      if (authDialog) authDialog.showModal();
+    }
   });
   $("menu-continue").addEventListener("click", () => {
     hideMenu();
@@ -1505,6 +1573,109 @@ $("sound-toggle").addEventListener("click", () => {
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
     });
   });
+  dialogs.forEach(dialog => {
+    dialog.addEventListener("close", () => {
+      if (returnToMenu) {
+        returnToMenu = false;
+        setMenuOpen(true, menuView === "main" ? "settings" : menuView);
+        return;
+      }
+      scheduleComputer();
+    });
+    dialog.addEventListener("click", event => {
+      if (dialog.id === "snake-dialog" || event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+    });
+  });
+
+  // Auth dialog handlers
+  const authDialog = $("auth-dialog");
+  if (authDialog) {
+    authDialog.querySelectorAll("[data-close-auth]").forEach(btn => btn.addEventListener("click", () => authDialog.close()));
+    authDialog.addEventListener("close", () => {
+      if (returnToMenu) {
+        returnToMenu = false;
+        setMenuOpen(true, menuView === "main" ? "settings" : menuView);
+      }
+    });
+    authDialog.addEventListener("click", event => {
+      if (event.target !== authDialog) return;
+      const rect = authDialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) authDialog.close();
+    });
+  }
+
+  // Auth form handlers
+  const loginForm = $("auth-login-form");
+  if (loginForm) {
+    loginForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const username = loginForm.elements.username.value.trim();
+      const password = loginForm.elements.password.value;
+      const errorEl = $("auth-login-error");
+      errorEl.textContent = "";
+      try {
+        await authLogin(username, password);
+        loginForm.reset();
+        $("auth-dialog").close();
+        if (authSkipped) setGuestMode();
+      } catch (error) {
+        errorEl.textContent = error.message;
+      }
+    });
+  }
+
+  const registerForm = $("auth-register-form");
+  if (registerForm) {
+    registerForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const username = registerForm.elements.username.value.trim();
+      const password = registerForm.elements.password.value;
+      const errorEl = $("auth-register-error");
+      errorEl.textContent = "";
+      try {
+        await authRegister(username, password);
+        registerForm.reset();
+        $("auth-dialog").close();
+      } catch (error) {
+        errorEl.textContent = error.message;
+      }
+    });
+  }
+
+  // Switch between login/register
+  const switchToRegister = $("auth-switch-to-register");
+  if (switchToRegister) {
+    switchToRegister.addEventListener("click", () => {
+      $("auth-login-view").hidden = true;
+      $("auth-register-view").hidden = false;
+    });
+  }
+  const switchToLogin = $("auth-switch-to-login");
+  if (switchToLogin) {
+    switchToLogin.addEventListener("click", () => {
+      $("auth-register-view").hidden = true;
+      $("auth-login-view").hidden = false;
+    });
+  }
+
+  // Guest/skip buttons
+  const skipLogin = $("auth-skip");
+  if (skipLogin) {
+    skipLogin.addEventListener("click", () => {
+      setGuestMode();
+      $("auth-dialog").close();
+    });
+  }
+  const skipRegister = $("auth-skip-register");
+  if (skipRegister) {
+    skipRegister.addEventListener("click", () => {
+      setGuestMode();
+      $("auth-dialog").close();
+    });
+  }
+
   document.addEventListener("keydown", event => {
     if (event.code !== "Space" || event.repeat || event.ctrlKey || event.altKey || event.metaKey || anyDialogOpen()) return;
     if (event.target.closest("button, a, input, textarea, select, [tabindex], [contenteditable='true']")) return;
@@ -1522,13 +1693,14 @@ $("sound-toggle").addEventListener("click", () => {
   }
   window.addEventListener("orientationchange", () => setTimeout(fitBoard, 100));
 
-  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
     });
   }
 
-loadSave();
+  loadAuth();
+  loadSave();
   visualPositions = game.players.map(player => player.position);
   if (game.mode === "local") localFriendName = game.players[1].name;
   buildPlayers();
