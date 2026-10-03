@@ -159,6 +159,8 @@ for (const viewport of VIEWPORTS) {
 
     test.beforeEach(async ({ page }) => {
       await page.goto("/?fast=500");
+      // Wait for splash to complete (minimum duration is ~30ms with ?fast=500)
+      await expect(page.locator("#splash")).toBeHidden({ timeout: 10000 });
       await enterGame(page);
       await page.locator("#fantasy-art").evaluate(image => image.decode());
     });

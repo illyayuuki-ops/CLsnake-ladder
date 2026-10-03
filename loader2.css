@@ -53,6 +53,10 @@ body {
   animation: pop 1s cubic-bezier(.2, 1.4, .4, 1) both, float 3.2s ease-in-out 1s infinite;
   filter: drop-shadow(0 14px 26px rgba(0, 0, 0, .4));
 }
+#splash #logo {
+  animation: logo-float 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 8px 14px rgba(35, 61, 50, .25));
+}
 .ring {
   position: absolute;
   inset: -14px;
@@ -90,8 +94,17 @@ h1 { margin: 0; font-size: clamp(24px, 5vw, 34px); font-weight: 600; letter-spac
 
 @keyframes pop { from { transform: scale(.3) rotate(-14deg); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes float { 50% { transform: translateY(-8px) rotate(1.2deg); } }
+@keyframes logo-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
 @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes roll { to { transform: rotate(360deg); } }
 @keyframes hop { 50% { transform: translateY(-8px); } }
 
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+#splash #logo {
+  animation: logo-float 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 8px 14px rgba(35, 61, 50, .25));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  #splash #logo { animation: none; }
+}

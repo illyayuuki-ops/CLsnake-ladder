@@ -65,15 +65,19 @@ let splashLoader = null;
 let splashProgress = 0;
 let splashCompleted = false;
 let splashFallbackTimer = null;
+let splashStartTime = 0;
+const MIN_SPLASH_MS = 15000;
+const DEV_SLOW_SPLASH = new URLSearchParams(location.search).has('demo-splash') || false;
 
 function initSplashLoader() {
   const messages = ['Warming up the board', 'Rolling in the pieces', 'Almost ready'];
+  splashStartTime = performance.now();
   splashLoader = new SplashLoader({ title: 'Snakes & Ladders', messages });
 
   // (a) font ready
   document.fonts.ready.then(() => {
     advanceSplashProgress(0.33);
-  });
+  }).catch(() => advanceSplashProgress(0.33)); // fallback if fonts fail
 
   // (b) game-engine.js already parsed by the time app.js runs (defer script order)
   advanceSplashProgress(0.66);
@@ -110,12 +114,13 @@ function initSplashLoader() {
     }
   };
 
-  // Fallback timer: if assets hang, complete after ~4s
+  // Fallback timer: safety net if real loading EXCEEDS 15s (not shortcut at 4s)
+  const fallbackDelay = DEV_SLOW_SPLASH ? (MIN_SPLASH_MS + 2000) : (Math.max(1, MIN_SPLASH_MS / FAST) + 2000);
   splashFallbackTimer = setTimeout(() => {
     if (!splashCompleted) {
       advanceSplashProgress(1.0);
     }
-  }, 4000);
+  }, fallbackDelay);
 
   // Skip splash immediately if prefers-reduced-motion AND assets already cached
   if (reducedMotion.matches) {
@@ -139,7 +144,12 @@ function advanceSplashProgress(p) {
   if (p >= 1 && !splashCompleted) {
     splashCompleted = true;
     if (splashFallbackTimer) clearTimeout(splashFallbackTimer);
-    onSplashComplete();
+    
+    // Wait for minimum splash duration before hiding (respect ?fast= param for testing)
+    const elapsed = performance.now() - splashStartTime;
+    const minSplashMs = DEV_SLOW_SPLASH ? MIN_SPLASH_MS : Math.max(1, MIN_SPLASH_MS / FAST);
+    const remaining = Math.max(0, minSplashMs - elapsed);
+    setTimeout(onSplashComplete, remaining);
   }
 }
 
