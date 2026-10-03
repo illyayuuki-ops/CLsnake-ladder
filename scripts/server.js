@@ -609,11 +609,34 @@ async function handleApi(request, response, pathname, search) {
         room.names[legacyIdx] = `Player ${legacyIdx + 1}`;
         room.colors[legacyIdx] = "";
         room.ready[legacyIdx] = false;
-        // If host left, promote next seated player
+        // If host left, promote next seated player and compact arrays
         if (room.host === legacyIdx) {
-          const nextHost = room.seats.findIndex(s => s);
-          room.host = nextHost >= 0 ? nextHost : 0;
+          const nextHostIdx = room.seats.findIndex((s, i) => i > legacyIdx && s);
+          if (nextHostIdx >= 0) {
+            room.host = nextHostIdx;
+          } else {
+            room.host = room.seats.findIndex(s => s);
+          }
         }
+        // Compact arrays
+        for (let i = legacyIdx; i < 3; i++) {
+          if (room.seats[i + 1]) {
+            room.seats[i] = room.seats[i + 1];
+            room.names[i] = room.names[i + 1];
+            room.colors[i] = room.colors[i + 1];
+            room.ready[i] = room.ready[i + 1];
+            if (room.host === i + 1) room.host = i;
+          } else {
+            room.seats[i] = false;
+            room.names[i] = `Player ${i + 1}`;
+            room.colors[i] = "";
+            room.ready[i] = false;
+          }
+        }
+        room.seats[3] = false;
+        room.names[3] = `Player 4`;
+        room.colors[3] = "";
+        room.ready[3] = false;
         // If room empty, delete it
         if (!room.seats.some(s => s)) {
           rooms.delete(room.code);
@@ -630,11 +653,36 @@ async function handleApi(request, response, pathname, search) {
     room.names[seatIdx] = `Player ${seatIdx + 1}`;
     room.colors[seatIdx] = "";
     room.ready[seatIdx] = false;
-    // If host left, promote next seated player
+    // If host left, promote next seated player and compact arrays
     if (room.host === seatIdx) {
-      const nextHost = room.seats.findIndex(s => s);
-      room.host = nextHost >= 0 ? nextHost : 0;
+      const nextHostIdx = room.seats.findIndex((s, i) => i > seatIdx && s);
+      if (nextHostIdx >= 0) {
+        room.host = nextHostIdx;
+      } else {
+        // Find any seated player
+        room.host = room.seats.findIndex(s => s);
+      }
     }
+    // Compact arrays: shift remaining players down to fill the gap
+    for (let i = seatIdx; i < 3; i++) {
+      if (room.seats[i + 1]) {
+        room.seats[i] = room.seats[i + 1];
+        room.names[i] = room.names[i + 1];
+        room.colors[i] = room.colors[i + 1];
+        room.ready[i] = room.ready[i + 1];
+        if (room.host === i + 1) room.host = i;
+      } else {
+        room.seats[i] = false;
+        room.names[i] = `Player ${i + 1}`;
+        room.colors[i] = "";
+        room.ready[i] = false;
+      }
+    }
+    // Last slot always cleared
+    room.seats[3] = false;
+    room.names[3] = `Player 4`;
+    room.colors[3] = "";
+    room.ready[3] = false;
     // Remove from queue if this was a public lobby
     if (room.isPublic && room.status === "lobby") {
       const qIdx = queue.findIndex(e => e.code === room.code && e.player === body.name);
