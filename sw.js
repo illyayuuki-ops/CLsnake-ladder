@@ -1,4 +1,5 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
+// Bump CACHE_VERSION whenever APP_SHELL contents change to ensure fresh app code is fetched
 const CACHE_NAME = `snakes-ladders-${CACHE_VERSION}`;
 
 const APP_SHELL = [
@@ -40,18 +41,6 @@ async function cleanOldCaches() {
   );
 }
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    precacheAppShell().then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    cleanOldCaches().then(() => self.clients.claim())
-  );
-});
-
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
@@ -68,6 +57,21 @@ async function cacheFirst(request) {
   }
 }
 
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return new Response('Offline', { status: 503 });
+  }
+}
+
 async function networkOnly(request) {
   try {
     return await fetch(request);
@@ -78,6 +82,18 @@ async function networkOnly(request) {
     });
   }
 }
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    precacheAppShell().then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    cleanOldCaches().then(() => self.clients.claim())
+  );
+});
 
 self.addEventListener('fetch', event => {
   const { request } = event;
@@ -90,18 +106,25 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  const isBoardImage = BOARD_IMAGES.some(img => url.pathname.endsWith(img.replace('./', '/')));
-  const isFantasyImage = FANTASY_IMAGES.some(img => url.pathname.endsWith(img.replace('./', '/')));
+  // networkFirst for app code, HTML, manifest, SW itself
+  const isNavigate = request.mode === 'navigate';
+  const isScript = request.destination === 'script';
+  const isStyle = request.destination === 'style';
+  const isManifest = url.pathname.endsWith('/manifest.webmanifest');
+  const isSW = url.pathname.endsWith('/sw.js');
+  const isIndexHTML = url.pathname === '/' || url.pathname === '/index.html';
 
-  if (isBoardImage || isFantasyImage || request.destination === 'image' || request.destination === 'font' || request.destination === 'style' || request.destination === 'script') {
-    event.respondWith(cacheFirst(request));
+  if (isNavigate || isScript || isStyle || isManifest || isSW || isIndexHTML) {
+    event.respondWith(networkFirst(request));
     return;
   }
 
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      caches.match('./index.html').then(cached => cached || fetch(request))
-    );
+  const isBoardImage = BOARD_IMAGES.some(img => url.pathname.endsWith(img.replace('./', '/')));
+  const isFantasyImage = FANTASY_IMAGES.some(img => url.pathname.endsWith(img.replace('./', '/')));
+  const isFont = request.destination === 'font';
+
+  if (isBoardImage || isFantasyImage || isFont || request.destination === 'image') {
+    event.respondWith(cacheFirst(request));
     return;
   }
 
