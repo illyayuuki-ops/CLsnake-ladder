@@ -392,12 +392,18 @@ async function handleApi(request, response, pathname, search) {
 
   if (request.method === "POST" && parts.length === 2) {
     const body = await readJson(request);
+    // Require auth token for room creation
+    const auth = request.headers.authorization;
+    const username = auth && auth.startsWith("Bearer ") ? getUsernameFromToken(auth.slice(7)) : null;
+    if (!username) return sendJson(response, 401, { error: "Authentication required to create a room." });
     // Server chooses the board — ignore any client-provided boardIndex
     const boardIndex = Math.floor(Math.random() * BOARDS.length);
-    const name = cleanName(body.name, "Player 1");
+    const name = cleanName(body.name, username);
+    // Creator picks their color
+    const color = body.color && DEFAULT_COLORS.includes(body.color) ? body.color : "blue";
     const created = {
       code: makeCode(), boardIndex,
-      seats: [true, false, false, false], names: [name, "", "", ""], colors: ["blue", "", "", ""], ready: [false, false, false, false],
+      seats: [true, false, false, false], names: [name, "", "", ""], colors: [color, "", "", ""], ready: [false, false, false, false],
       status: "lobby", host: 0, isPublic: false,
       version: 1, last: null, pending: null, waiters: [], state: null,
       createdAt: Date.now(), updatedAt: Date.now(),
@@ -412,6 +418,10 @@ async function handleApi(request, response, pathname, search) {
 
   if (request.method === "POST" && action === "join") {
     const body = await readJson(request);
+    // Room must be in lobby state to join
+    if (room.status !== "lobby") {
+      return sendJson(response, 409, { error: "That room is no longer accepting players." });
+    }
     // Check if already in room
     const existingIdx = room.seats.findIndex((s, i) => s && room.names[i] === body.name);
     if (existingIdx >= 0) {

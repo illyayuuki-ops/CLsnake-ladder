@@ -44,7 +44,22 @@ async function request(origin, pathname, body, token) {
 }
 
 async function makeRoom(origin, name, token) {
+  // If no token provided, register a new user with unique username
+  if (!token) {
+    // Generate a username that only contains alphanumeric and underscore, ensure uniqueness
+    const randomPart = Math.random().toString(36).substring(2, 15).replace(/[^a-z0-9]/g, '');
+    const username = `user_${Date.now()}_${Math.random().toString(36).substring(2, 10)}_${randomPart}`.slice(0, 16);
+    const reg = await request(origin, "/api/auth/register", { username, password: "password123" });
+    if (reg.status !== 201) {
+      console.log("Registration failed:", reg);
+    }
+    assert.equal(reg.status, 201);
+    token = reg.data.token;
+  }
   const created = await request(origin, "/api/rooms", { name }, token);
+  if (created.status !== 201) {
+    console.log("Room creation failed:", created);
+  }
   assert.equal(created.status, 201);
   const joined = await request(origin, `/api/rooms/${created.data.code}/join`, { name: "Riddle friend" }, token);
   if (joined.status !== 200) console.log("Join error:", joined);
@@ -58,15 +73,18 @@ async function makeRoom(origin, name, token) {
   const started = await request(origin, `/api/rooms/${created.data.code}/start`, { name }, token);
   if (started.status !== 200) console.log("Start error:", started);
   assert.equal(started.status, 200);
-  return created.data.code;
+  return { code: created.data.code, token };
 }
 
-async function rollToSnakeHead(origin, code) {
+async function rollToSnakeHead(origin, code, token) {
   let pending = null;
   // Roll until we hit a snake (pending is set)
   for (let attempt = 0; attempt < 100; attempt++) {
     for (const player of [0, 1]) {
-      const result = await request(origin, `/api/rooms/${code}/roll`, { seatIndex: player });
+      const result = await request(origin, `/api/rooms/${code}/roll`, { seatIndex: player }, token);
+      if (result.status !== 200) {
+        console.log("Roll failed:", result);
+      }
       assert.equal(result.status, 200);
       if (result.data.pending) {
         pending = result.data.pending;
@@ -92,22 +110,22 @@ test("Gemini haiku challenges stay server-side and resolve shared snake turns", 
   });
   const origin = await ready;
 
-  const slideRoom = await makeRoom(origin, "Ada");
-  const slidePending = await rollToSnakeHead(origin, slideRoom);
+  const { code: slideRoom, token: slideToken } = await makeRoom(origin, "Ada");
+  const slidePending = await rollToSnakeHead(origin, slideRoom, slideToken);
   const wrongChallenge = await request(origin, "/api/riddles", {
     roomCode: slideRoom, player: slidePending.player, pendingId: slidePending.id,
-  });
+  }, slideToken);
   assert.equal(wrongChallenge.status, 201);
   assert.equal(wrongChallenge.data.haiku.split(String.fromCharCode(10)).length, 3);
   assert.equal("answer" in wrongChallenge.data, false);
   assert.equal("acceptedAnswers" in wrongChallenge.data, false);
   const wrongAnswer = await request(origin, `/api/riddles/${wrongChallenge.data.id}/answer`, {
     roomCode: slideRoom, player: slidePending.player, pendingId: slidePending.id, answer: "the sun",
-  });
+  }, slideToken);
   assert.deepEqual(wrongAnswer, { status: 200, data: { correct: false, answer: "moon" } });
   const slide = await request(origin, `/api/rooms/${slideRoom}/resolve`, {
     seatIndex: slidePending.player, choice: "slide", riddleId: wrongChallenge.data.id,
-  });
+  }, slideToken);
   assert.equal(slide.status, 200);
   assert.equal(slide.data.pending, null);
   // After classic slide, player should be at the snake's tail (different per board)
@@ -115,23 +133,23 @@ test("Gemini haiku challenges stay server-side and resolve shared snake turns", 
   assert.equal(slide.data.state.players[slidePending.player].slides, 1);
   assert.equal(slide.data.last.type, "snake");
 
-  const rescueRoom = await makeRoom(origin, "Grace");
-  const rescuePending = await rollToSnakeHead(origin, rescueRoom);
+  const { code: rescueRoom, token: rescueToken } = await makeRoom(origin, "Grace");
+  const rescuePending = await rollToSnakeHead(origin, rescueRoom, rescueToken);
   const challenge = await request(origin, "/api/riddles", {
     roomCode: rescueRoom, player: rescuePending.player, pendingId: rescuePending.id,
-  });
+  }, rescueToken);
   assert.equal(challenge.status, 201);
   const wrongSeat = await request(origin, `/api/riddles/${challenge.data.id}/answer`, {
     roomCode: rescueRoom, player: 1 - rescuePending.player, pendingId: rescuePending.id, answer: "moon",
-  });
+  }, rescueToken);
   assert.equal(wrongSeat.status, 403);
   const answer = await request(origin, `/api/riddles/${challenge.data.id}/answer`, {
     roomCode: rescueRoom, player: rescuePending.player, pendingId: rescuePending.id, answer: "the moon",
-  });
+  }, rescueToken);
   assert.deepEqual(answer, { status: 200, data: { correct: true } });
   const rescue = await request(origin, `/api/rooms/${rescueRoom}/resolve`, {
     seatIndex: rescuePending.player, choice: "riddle", riddleId: challenge.data.id,
-  });
+  }, rescueToken);
   assert.equal(rescue.status, 200);
   assert.equal(rescue.data.pending, null);
   // After riddle rescue, player stays at the snake's head (different per board)
@@ -154,7 +172,9 @@ test("Server picks random board for each room and re-randomizes on rematch", asy
   const seenBoards = new Set();
   const iterations = 20;
   for (let i = 0; i < iterations; i++) {
-    const created = await request(origin, "/api/rooms", { name: `Player${i}`, boardIndex: 5 });
+    const reg = await request(origin, "/api/auth/register", { username: `Player${i}`, password: "password123" });
+    assert.equal(reg.status, 201);
+    const created = await request(origin, "/api/rooms", { name: `Player${i}` }, reg.data.token);
     assert.equal(created.status, 201);
     const boardIndex = created.data.boardIndex;
     assert.ok(Number.isInteger(boardIndex), `boardIndex must be integer, got ${boardIndex}`);
@@ -165,11 +185,11 @@ test("Server picks random board for each room and re-randomizes on rematch", asy
   assert.ok(seenBoards.size >= 2, `Expected at least 2 distinct boards from ${iterations} rooms, got ${seenBoards.size}`);
 
   // Test rematch re-randomizes board
-  const roomCode = await makeRoom(origin, "RematchTest");
-  const firstBoard = (await request(origin, `/api/rooms/${roomCode}`)).data.boardIndex;
-  await request(origin, `/api/rooms/${roomCode}/leave`, { seatIndex: 0 });
+  const { code: roomCode, token } = await makeRoom(origin, "RematchTest");
+  const firstBoard = (await request(origin, `/api/rooms/${roomCode}`, undefined, token)).data.boardIndex;
+  await request(origin, `/api/rooms/${roomCode}/leave`, { seatIndex: 0 }, token);
   // After leave, freshState is called which should re-randomize
-  const secondState = await request(origin, `/api/rooms/${roomCode}/rejoin`, { seatIndex: 0, name: "RematchTest" });
+  const secondState = await request(origin, `/api/rooms/${roomCode}/rejoin`, { seatIndex: 0, name: "RematchTest" }, token);
   console.log("secondState:", JSON.stringify(secondState, null, 2));
   // Note: leave triggers freshState, then rejoin reuses the same room but with new state
   // The boardIndex might be the same by chance, but we verify it's a valid integer
