@@ -364,7 +364,9 @@ test("Full lobby lifecycle: create→join×3→ready all→host start→turn ord
         riddleId: result.data.pending?.id 
       }, playerTokens[state.turn]);
       assert.equal(resolveResult.status, 200);
-      // Now roll again for the same player (turn shouldn't have advanced)
+      // Update state after resolve (turn advances to next player)
+      state = resolveResult.data.state;
+      // Now roll for the next player
       const retryResult = await request(origin, `/api/rooms/${code}/roll`, { seatIndex: state.turn }, playerTokens[state.turn]);
       assert.equal(retryResult.status, 200);
       turns.push(retryResult.data.state.turn);
