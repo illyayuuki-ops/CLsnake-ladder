@@ -246,9 +246,14 @@ function cleanName(value, fallback) {
     const players = [];
     for (let i = 0; i < playerCount; i++) {
       const p = playersInput[i];
-      const name = typeof p === "object" && p !== null ? p.name : p;
+      let name = typeof p === "object" && p !== null ? p.name : p;
+      // Computer mode: second player is always "Fern"
+      if (mode === "computer" && i === 1 && !name) name = "Fern";
+      name = cleanName(name, `Player ${i + 1}`);
+      // Computer mode: force Fern as player 2 name
+      if (mode === "computer" && i === 1) name = "Fern";
       players.push({
-        name: cleanName(name, `Player ${i + 1}`),
+        name,
         color: colors[i] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
         position: 1,
         rolls: 0,
@@ -343,7 +348,9 @@ function cleanName(value, fallback) {
           if (!validInteger(player[stat], 0, saved.totalRolls)) throw new Error("Invalid statistics.");
         }
         if (player.climbs + player.slides > player.rolls) throw new Error("Invalid jumps.");
-        return { name: fresh.players[i].name, position: player.position, rolls: player.rolls, climbs: player.climbs, slides: player.slides };
+        // Backward compatibility: use saved color or default from fresh game
+        const color = player.color ?? fresh.players[i].color;
+        return { name: fresh.players[i].name, color, position: player.position, rolls: player.rolls, climbs: player.climbs, slides: player.slides };
       });
       // Backward compatibility: for 2-player saves, validate turn/roll parity
       if (playerCount === 2) {

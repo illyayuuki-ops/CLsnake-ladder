@@ -356,9 +356,24 @@ test("Full lobby lifecycle: create→join×3→ready all→host start→turn ord
     if (result.status !== 200) {
       console.log("Roll failed:", result, "turn:", state.turn, "turn player:", state.turn);
     }
-    assert.equal(result.status, 200);
-    turns.push(result.data.state.turn);
-    state = result.data.state;
+    if (result.status === 409 && result.data.error?.includes("pending snake riddle")) {
+      // Resolve the pending riddle by taking the slide
+      const resolveResult = await request(origin, `/api/rooms/${code}/resolve`, { 
+        seatIndex: state.turn, 
+        choice: "slide", 
+        riddleId: result.data.pending?.id 
+      }, playerTokens[state.turn]);
+      assert.equal(resolveResult.status, 200);
+      // Now roll again for the same player (turn shouldn't have advanced)
+      const retryResult = await request(origin, `/api/rooms/${code}/roll`, { seatIndex: state.turn }, playerTokens[state.turn]);
+      assert.equal(retryResult.status, 200);
+      turns.push(retryResult.data.state.turn);
+      state = retryResult.data.state;
+    } else {
+      assert.equal(result.status, 200);
+      turns.push(result.data.state.turn);
+      state = result.data.state;
+    }
     if (state.winner !== null) break;
   }
   // First 4 turns should be 0,1,2,3 then 0,1,2,3
