@@ -26,6 +26,7 @@ const rooms = new Map();
 const riddles = new Map();
 const accounts = new Map();
 const sessions = new Map();
+const queue = []; // Matchmaking queue: [{ code, player, createdAt }]
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, dkLen: 32 };
 const ALLOWED_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
 
@@ -322,24 +323,26 @@ async function handleApi(request, response, pathname, search) {
     const token = body.token;
     const username = getUsernameFromToken(token);
     if (!username) return sendJson(response, 401, { error: "Invalid or expired token." });
+
     if (parts[2] === "leave") {
-      // Find and remove from any public queue
+      // Remove from queue
+      const idx = queue.findIndex(e => e.player === username);
+      if (idx >= 0) queue.splice(idx, 1);
+      // Also leave any public lobby room
       for (const [code, room] of rooms) {
         if (room.isPublic && room.status === "lobby") {
-          const idx = room.seats.findIndex((s, i) => s && room.names[i] === username);
-          if (idx >= 0) {
-            room.seats[idx] = false;
-            room.names[idx] = `Player ${idx + 1}`;
-            room.colors[idx] = "";
-            room.ready[idx] = false;
-            if (room.host === idx) {
-              // Find next seated player as host
+          const seatIdx = room.seats.findIndex((s, i) => s && room.names[i] === username);
+          if (seatIdx >= 0) {
+            room.seats[seatIdx] = false;
+            room.names[seatIdx] = `Player ${seatIdx + 1}`;
+            room.colors[seatIdx] = "";
+            room.ready[seatIdx] = false;
+            if (room.host === seatIdx) {
               const nextHost = room.seats.findIndex(s => s);
               room.host = nextHost >= 0 ? nextHost : 0;
             }
             touch(room);
             flush(room);
-            // Clean up empty public rooms
             if (!room.seats.some(s => s)) {
               rooms.delete(code);
             }
@@ -347,42 +350,72 @@ async function handleApi(request, response, pathname, search) {
           }
         }
       }
-      return sendJson(response, 200, { left: false });
+      return sendJson(response, 200, { left: true });
     }
-    // Join or create public lobby
-    // Find existing public lobby with free seat
-    let targetRoom = null;
+
+    // POST /api/queue - matchmaking
+    // Check if player is already in queue
+    if (queue.some(e => e.player === username)) {
+      return sendJson(response, 409, { error: "You are already in the queue." });
+    }
+    // Check if player is already in a public room
     for (const [code, room] of rooms) {
-      if (room.isPublic && room.status === "lobby" && room.seats.filter(s => s).length < 4) {
-        targetRoom = room;
-        break;
+      if (room.isPublic && room.status === "lobby" && room.seats.some((s, i) => s && room.names[i] === username)) {
+        return sendJson(response, 409, { error: "You are already in a public room." });
       }
     }
-    if (!targetRoom) {
-      // Create new public lobby
+
+    // Find existing queue entry to pair with
+    const existingEntry = queue.find(e => e.player !== username);
+    if (existingEntry) {
+      // Pop the existing entry and join their room
+      queue.splice(queue.indexOf(existingEntry), 1);
+      const room = rooms.get(existingEntry.code);
+      if (!room || room.status !== "lobby" || room.seats.filter(s => s).length >= 4) {
+        // Room no longer valid, create new room instead
+        const boardIndex = Math.floor(Math.random() * BOARDS.length);
+        const newRoom = {
+          code: makeCode(), boardIndex,
+          seats: [true, false, false, false], names: [username, "", "", ""], colors: ["blue", "", "", ""], ready: [false, false, false, false],
+          status: "lobby", host: 0, isPublic: true,
+          version: 1, last: null, pending: null, waiters: [], state: null,
+          createdAt: Date.now(), updatedAt: Date.now(),
+        };
+        assignColors(newRoom);
+        rooms.set(newRoom.code, newRoom);
+        queue.push({ code: newRoom.code, player: username, createdAt: Date.now() });
+        return sendJson(response, 200, { ...snapshot(newRoom, 0), player: 0, queued: true });
+      }
+      // Join the existing room
+      const seatIndex = room.seats.findIndex(s => !s);
+      room.seats[seatIndex] = true;
+      room.names[seatIndex] = username;
+      room.ready[seatIndex] = false;
+      assignColors(room);
+      touch(room);
+      flush(room);
+      // If room is now full (4 players), remove all its queue entries
+      if (room.seats.filter(s => s).length === 4) {
+        for (let i = queue.length - 1; i >= 0; i--) {
+          if (queue[i].code === room.code) queue.splice(i, 1);
+        }
+      }
+      return sendJson(response, 200, { ...snapshot(room, seatIndex), player: seatIndex, queued: false });
+    } else {
+      // No waiting entry, create new public room and add to queue
       const boardIndex = Math.floor(Math.random() * BOARDS.length);
-      targetRoom = {
+      const newRoom = {
         code: makeCode(), boardIndex,
         seats: [true, false, false, false], names: [username, "", "", ""], colors: ["blue", "", "", ""], ready: [false, false, false, false],
         status: "lobby", host: 0, isPublic: true,
         version: 1, last: null, pending: null, waiters: [], state: null,
         createdAt: Date.now(), updatedAt: Date.now(),
       };
-      assignColors(targetRoom);
-      rooms.set(targetRoom.code, targetRoom);
-    } else {
-      // Join existing public lobby
-      const seatIndex = targetRoom.seats.findIndex(s => !s);
-      if (seatIndex >= 0) {
-        targetRoom.seats[seatIndex] = true;
-        targetRoom.names[seatIndex] = username;
-        targetRoom.ready[seatIndex] = false;
-        assignColors(targetRoom);
-        touch(targetRoom);
-        flush(targetRoom);
-      }
+      assignColors(newRoom);
+      rooms.set(newRoom.code, newRoom);
+      queue.push({ code: newRoom.code, player: username, createdAt: Date.now() });
+      return sendJson(response, 200, { ...snapshot(newRoom, 0), player: 0, queued: true });
     }
-    return sendJson(response, 200, { ...snapshot(targetRoom, targetRoom.seats.findIndex((s, i) => s && targetRoom.names[i] === username)), player: targetRoom.seats.findIndex((s, i) => s && targetRoom.names[i] === username) });
   }
 
   if (parts[1] === "riddles") return handleRiddleApi(request, response, parts);
@@ -602,6 +635,11 @@ async function handleApi(request, response, pathname, search) {
       const nextHost = room.seats.findIndex(s => s);
       room.host = nextHost >= 0 ? nextHost : 0;
     }
+    // Remove from queue if this was a public lobby
+    if (room.isPublic && room.status === "lobby") {
+      const qIdx = queue.findIndex(e => e.code === room.code && e.player === body.name);
+      if (qIdx >= 0) queue.splice(qIdx, 1);
+    }
     // If room empty, delete it
     if (!room.seats.some(s => s)) {
       rooms.delete(room.code);
@@ -689,6 +727,11 @@ const server = http.createServer((request, response) => {
 const sweep = setInterval(() => {
   const cutoff = Date.now() - ROOM_TTL;
   for (const [code, room] of rooms) if (room.updatedAt < cutoff && !room.waiters.length) rooms.delete(code);
+  // Clean up expired queue entries
+  const queueCutoff = Date.now() - ROOM_TTL;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].createdAt < queueCutoff) queue.splice(i, 1);
+  }
 }, 60000);
 sweep.unref();
 
