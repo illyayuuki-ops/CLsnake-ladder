@@ -474,6 +474,7 @@ function onSplashComplete() {
   function syncMenu() {
     // Any valid save can be continued, including one reloaded mid-animation.
     const saved = !online && restored;
+    const isLocalMode = !online && game.mode === "local";
     $("menu-continue").hidden = !saved;
     $("menu-continue").querySelector("span").textContent = saved ? `Continue on ${Game.BOARDS[game.boardIndex].name}` : "Continue your saved game";
     $("menu-rejoin").hidden = !savedOnline;
@@ -486,6 +487,9 @@ function onSplashComplete() {
     $("setting-pace-value").textContent = preferences.speed === "quick" ? "Quick & breezy" : "Take it easy";
     $("setting-view").setAttribute("aria-pressed", String(preferences.perspective));
     $("setting-view-value").textContent = preferences.perspective ? "Tilted 3D board" : "Flat board";
+    // Hide board picker for online/computer modes
+    $("change-board").hidden = !isLocalMode;
+    $("setting-board").hidden = !isLocalMode;
     $("setting-board-value").textContent = Game.BOARDS[game.boardIndex].name;
     $("setting-names-value").textContent = `${game.players[0].name} and ${game.players[1].name}`;
     syncRoomView();
@@ -697,7 +701,7 @@ function onSplashComplete() {
   async function createRoom() {
     $("online-message").textContent = "Creating your room…";
     try {
-      const data = await api("api/rooms", { name: game.players[0].name, boardIndex: game.boardIndex });
+      const data = await api("api/rooms", { name: game.players[0].name });
       adoptRoom(data, `Room ${data.code} is ready. Share the code with your friend.`);
     } catch (error) { $("online-message").textContent = error.message; }
   }
@@ -796,6 +800,7 @@ function onSplashComplete() {
     visualPositions = game.players.map(player => player.position);
     visualPositions.forEach((square, i) => positionPawn(i, square));
     render();
+    applyAppearance();
   }
 
   function handleRoomSnapshot(data) {
@@ -1076,7 +1081,7 @@ function onSplashComplete() {
     }
   }
 
-  function startGame(options = {}) {
+function startGame(options = {}) {
     returnToMenu = false;
     stopComputerTimer();
     if (online) stopOnline(true);
@@ -1084,7 +1089,10 @@ function onSplashComplete() {
     busy = false;
     clearTimeout(confettiTimer);
     $("confetti").replaceChildren();
-    game = Game.createGame({ boardIndex: options.boardIndex ?? game.boardIndex, mode: options.mode ?? game.mode, names: options.names ?? game.players.map(player => player.name) });
+    // For computer (Fern) mode, server picks the board - use random if not explicitly provided
+    const isComputerMode = options.mode === "computer" || (options.mode === undefined && game.mode === "computer");
+    const boardIndex = (isComputerMode && options.boardIndex === undefined) ? Math.floor(Math.random() * Game.BOARDS.length) : (options.boardIndex ?? game.boardIndex);
+    game = Game.createGame({ boardIndex, mode: options.mode ?? game.mode, names: options.names ?? game.players.map(player => player.name) });
     visualPositions = [1, 1];
     if (game.mode === "local") localFriendName = game.players[1].name;
     dialogs.forEach(dialog => { if (dialog.open) dialog.close(); });
@@ -1092,7 +1100,7 @@ function onSplashComplete() {
     renderBoard();
     render();
     setDie(1);
-    status(`${game.players[0].name} starts on square 1. Let’s roll!`);
+    status(`${game.players[0].name} starts on square 1. Let's roll!`);
     save();
     $("roll").focus({ preventScroll: true });
     scheduleComputer();
@@ -1367,7 +1375,7 @@ $("sound-toggle").addEventListener("click", () => {
     preferences.speed = form.elements.speed.value;
     startGame({ mode: form.elements.mode.value, names: [$("player-one-name").value, $("player-two-name").value] });
   });
-  $("play-again").addEventListener("click", () => startGame());
+  $("play-again").addEventListener("click", () => startGame(game.mode === "computer" ? { boardIndex: Math.floor(Math.random() * Game.BOARDS.length) } : {}));
   $("winner-change-board").addEventListener("click", () => { $("win-dialog").close(); openBoards(); });
   document.querySelectorAll("[data-close-dialog]").forEach(button => {
     button.addEventListener("click", () => button.closest("dialog").close());
