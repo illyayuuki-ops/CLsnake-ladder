@@ -5,7 +5,7 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
-const { createGame, applyRoll, rollDie } = require("../game-engine.js");
+const { createGame, applyRoll, rollDie, BOARDS } = require("../game-engine.js");
 
 const root = path.resolve(__dirname, "..");
 const portFlag = process.argv.indexOf("--port");
@@ -201,6 +201,8 @@ function flush(room) {
 }
 
 function freshState(room) {
+  // Re-randomize board on every new game/rematch so both seats get a different board
+  room.boardIndex = Math.floor(Math.random() * BOARDS.length);
   room.state = createGame({ boardIndex: room.boardIndex, names: [...room.names] });
   room.last = null;
   room.pending = null;
@@ -220,7 +222,8 @@ async function handleApi(request, response, pathname, search) {
 
   if (request.method === "POST" && parts.length === 2) {
     const body = await readJson(request);
-    const boardIndex = Number.isInteger(body.boardIndex) ? Math.min(Math.max(body.boardIndex, 0), 19) : 0;
+    // Server chooses the board — ignore any client-provided boardIndex
+    const boardIndex = Math.floor(Math.random() * BOARDS.length);
     const name = cleanName(body.name, "Player 1");
     const created = {
       code: makeCode(), boardIndex, seats: [true, false], names: [name, "Player 2"],
