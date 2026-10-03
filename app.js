@@ -174,6 +174,12 @@ function onSplashComplete() {
     const headers = { "Content-Type": "application/json", Accept: "application/json" };
     if (authToken) headers.Authorization = `Bearer ${authToken}`;
     const response = await fetch(path, { method: "POST", headers, body: JSON.stringify(body) });
+    if (response.status === 401) {
+      clearAuth();
+      const authDialog = $("auth-dialog");
+      if (authDialog) authDialog.showModal();
+      throw new Error("Please log in to continue.");
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `The game server answered with ${response.status}.`);
     return data;
@@ -199,6 +205,20 @@ function onSplashComplete() {
   function setGuestMode() {
     authSkipped = true;
     localStorage.setItem("snake-ladder:guest", "true");
+  }
+
+  async function ensureGuestAuth() {
+    if (authToken) return;
+    // Auto-register a throwaway guest account
+    const guestName = `Guest_${Math.random().toString(36).slice(2, 8)}`;
+    const guestPass = Math.random().toString(36).slice(2);
+    try {
+      await authRegister(guestName, guestPass);
+    } catch {
+      // If registration fails (name taken), try again
+      const guestName2 = `Guest_${Math.random().toString(36).slice(2, 8)}`;
+      await authRegister(guestName2, guestPass);
+    }
   }
 
   function isAuthenticated() {
@@ -850,6 +870,7 @@ function syncRoomView(message) {
   }
 
   async function createRoom() {
+    if (authSkipped && !authToken) await ensureGuestAuth();
     $("online-message").textContent = "Creating your room…";
     try {
       const data = await api("api/rooms", { name: game.players[0].name });
@@ -858,6 +879,7 @@ function syncRoomView(message) {
   }
 
   async function joinRoom(rawCode) {
+    if (authSkipped && !authToken) await ensureGuestAuth();
     const code = String(rawCode || "").trim().toUpperCase();
     if (code.length !== 5) {
       $("online-message").textContent = "Enter the five-character room code.";
@@ -973,6 +995,7 @@ function syncRoomView(message) {
       if (authDialog) authDialog.showModal();
       return;
     }
+    if (authSkipped && !authToken) await ensureGuestAuth();
     setMenuView("queue");
     $("queue-message").textContent = "Searching for a public room…";
     try {

@@ -387,10 +387,10 @@
         <h2 id="auth-title">Log in to play online</h2>
         <p class="dialog-intro">Your rooms and progress sync across devices.</p>
         <form id="auth-login-form" novalidate>
-          <label for="auth-login-username">Username</label>
-          <input id="auth-login-username" name="username" type="text" maxlength="16" autocomplete="username" required>
-          <label for="auth-login-password">Password</label>
-          <input id="auth-login-password" name="password" type="password" autocomplete="current-password" required>
+          <div class="name-fields">
+            <label>Username<input id="auth-login-username" name="username" type="text" maxlength="16" autocomplete="username" required></label>
+            <label>Password<input id="auth-login-password" name="password" type="password" autocomplete="current-password" required></label>
+          </div>
           <p class="dialog-error" id="auth-login-error" role="alert" aria-live="polite"></p>
           <div class="dialog-actions">
             <button class="primary-button full-width" type="submit">Log in<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
@@ -404,11 +404,11 @@
         <h2 id="auth-register-title">Create your account</h2>
         <p class="dialog-intro">Pick a username and password to save your rooms.</p>
         <form id="auth-register-form" novalidate>
-          <label for="auth-register-username">Username</label>
-          <input id="auth-register-username" name="username" type="text" maxlength="16" autocomplete="username" required pattern="[a-zA-Z0-9_]{2,16}" title="2-16 characters, letters, numbers, underscore only">
-          <p class="form-hint">2–16 characters, letters, numbers, underscore only.</p>
-          <label for="auth-register-password">Password</label>
-          <input id="auth-register-password" name="password" type="password" autocomplete="new-password" required minlength="4">
+          <div class="name-fields">
+            <label>Username<input id="auth-register-username" name="username" type="text" maxlength="16" autocomplete="username" required pattern="[a-zA-Z0-9_]{2,16}" title="2-16 characters, letters, numbers, underscore only"></label>
+            <p class="form-hint">2–16 characters, letters, numbers, underscore only.</p>
+            <label>Password<input id="auth-register-password" name="password" type="password" autocomplete="new-password" required minlength="4"></label>
+          </div>
           <p class="dialog-error" id="auth-register-error" role="alert" aria-live="polite"></p>
           <div class="dialog-actions">
             <button class="primary-button full-width" type="submit">Create account<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>

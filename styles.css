@@ -267,6 +267,12 @@ legend { font-size: 11px; font-weight: 650; padding: 0; margin-bottom: 9px; }
 .name-fields label { font-size: 10px; font-weight: 600; min-width: 0; }
 .name-fields input { width: 100%; display: block; margin-top: 7px; padding: 9px 10px; font-size: 13px; color: #4f6540; background: #fafbf5; border: 1px solid #d7e1ca; border-radius: 8px; }
 .name-fields input:disabled { background: #eff3e5; color: var(--muted); }
+
+/* Auth dialog - single column layout for label above input */
+.auth-dialog .name-fields { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; grid-template-columns: 1fr; }
+.auth-dialog .name-fields label { display: flex; flex-direction: column; gap: 5px; font-size: 10px; font-weight: 600; }
+.auth-dialog .name-fields input { margin-top: 0; padding: 9px 10px; font-size: 13px; }
+.auth-dialog .form-hint { font-size: 9px; color: var(--muted); margin-top: 2px; }
 .speed-options { display: flex; gap: 10px; }
 .speed-options label { display: flex; align-items: center; gap: 7px; border: 1px solid #dfe6d6; border-radius: 7px; font-size: 10px; padding: 9px 10px; cursor: pointer; }
 .speed-options input { accent-color: var(--green); margin: 0; }
