@@ -580,17 +580,85 @@ function syncRoomView(message) {
     if (!online) $("room-status").textContent = "No room yet.";
     else if (!joined) $("room-status").textContent = "Waiting for another player to join… share the room code.";
     else $("room-status").textContent = `Both players are here. ${game.players[game.turn].name} plays first${game.turn === online.player ? " — that's you!" : "."}`;
-if (message) $("online-message").textContent = message;
+    if (message) $("online-message").textContent = message;
     // Show QR code for the room
     if (online?.code) generateRoomQR(online.code);
   }
 
-  function setMenuView(view) {
-    menuView = menuFocus[view] ? view : "main";
-    menuViews.forEach(node => { node.hidden = node.dataset.view !== menuView; });
-    syncMenu();
-    const target = $(menuFocus[menuView]);
-    if (target && !target.hidden) target.focus({ preventScroll: true });
+  // Lobby view rendering
+  function syncLobbyView(message) {
+    if (!online) return;
+    $("lobby-code").textContent = online.code;
+    const isHost = online.player === online.host;
+    const seatedCount = online.seats.filter(s => s).length;
+    const allReady = online.seats.every((s, i) => !s || online.ready[i]);
+    const canStart = isHost && seatedCount >= 2 && allReady;
+
+    // Update status text
+    if (!online.seats.some(s => s)) {
+      $("lobby-status").textContent = "Room is empty.";
+    } else if (online.status === "playing") {
+      $("lobby-status").textContent = "Game in progress…";
+    } else if (seatedCount === 1) {
+      $("lobby-status").textContent = "Waiting for players to join…";
+    } else if (!allReady) {
+      $("lobby-status").textContent = "Waiting for all players to ready up.";
+    } else {
+      $("lobby-status").textContent = "Everyone ready! Host can start the game.";
+    }
+
+    // Render seats
+    const seatsContainer = $("lobby-seats");
+    if (seatsContainer) {
+      seatsContainer.innerHTML = online.seats.map((seated, i) => {
+        if (!seated) {
+          return `<div class="lobby-seat empty" data-seat="${i}"><div class="lobby-seat-pawn" style="background:rgba(255,255,255,0.05)"></div><span class="lobby-seat-name">Empty seat</span></div>`;
+        }
+        const isCurrentPlayer = i === online.player;
+        const name = online.names[i] || `Player ${i + 1}`;
+        const color = online.colors[i] || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+        const isReady = online.ready[i];
+        const isHost = i === online.host;
+
+        // Build color picker swatches
+        const takenColors = online.seats.map((s, idx) => s ? online.colors[idx] : null).filter(Boolean);
+        const colorSwatches = DEFAULT_COLORS.map(c => {
+          const isTaken = takenColors.includes(c) && c !== color;
+          const isSelected = c === color;
+          return `<button class="lobby-color-swatch ${isSelected ? 'selected' : ''} ${isTaken ? 'disabled' : ''}" data-seat="${i}" data-color="${c}" style="background:${c}" ${isTaken ? 'disabled' : ''} aria-label="${c}${isTaken ? ' (taken)' : ''}" aria-pressed="${isSelected}"></button>`;
+        }).join('');
+
+        const readyBtnClass = isReady ? 'lobby-ready-toggle ready' : 'lobby-ready-toggle';
+        const readyBtnText = isReady ? 'Ready' : 'Not ready';
+
+        return `
+          <div class="lobby-seat" data-seat="${i}"${isCurrentPlayer ? ' style="box-shadow:0 0 0 2px rgba(207,230,182,0.5);"' : ''}>
+            <div class="lobby-seat-pawn" style="background:${color}; border-color:${color}"></div>
+            <span class="lobby-seat-name">${name}${isCurrentPlayer ? ' (you)' : ''}${isHost ? ' <span class="lobby-seat-host-badge">Host</span>' : ''}</span>
+            <button class="${readyBtnClass}" data-seat="${i}" data-ready="${isReady}" aria-pressed="${isReady}">${readyBtnText}</button>
+            <div class="lobby-color-picker" data-seat="${i}">${colorSwatches}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Show/hide start button for host
+    const startBtn = $("lobby-start");
+    if (startBtn) {
+      startBtn.hidden = !canStart || online.status === "playing";
+      if (canStart) startBtn.textContent = "Start game";
+    }
+
+    // Show leave button
+    const leaveBtn = $("lobby-leave");
+    if (leaveBtn) leaveBtn.hidden = false;
+
+    // Show copy link button
+    const copyBtn = $("lobby-copy");
+    if (copyBtn) copyBtn.hidden = false;
+
+    if (message) $("online-message").textContent = message;
+    if (online?.code) generateRoomQR(online.code);
   }
 
   function setMenuOpen(open, view = menuView) {
@@ -760,14 +828,15 @@ if (message) $("online-message").textContent = message;
   }
 
   function adoptRoom(data, message) {
-    online = { code: data.code, player: data.player, version: data.version, seats: [...data.seats], names: [...data.names], pending: data.pending || null };
+    online = { code: data.code, player: data.player, version: data.version, seats: [...data.seats], names: [...data.names], colors: [...data.colors], ready: [...data.ready], status: data.status, host: data.host, isPublic: data.isPublic, pending: data.pending || null };
     savedOnline = { code: data.code, player: data.player };
     onlineEntered = false;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
     applyRoomState(data.state, {});
     save();
-    setMenuView("room");
-    syncRoomView(message);
+    // Go to lobby view for lobby status, room view for playing
+    setMenuView(data.status === "playing" ? "room" : "lobby");
+    syncLobbyView(message);
     generateRoomQR(data.code);
     startPolling();
   }
@@ -830,6 +899,60 @@ if (message) $("online-message").textContent = message;
     } catch {
       $("online-message").textContent = `Share this code: ${online?.code || ""}.`;
     }
+  }
+
+  // Lobby handlers
+  async function startGameFromLobby() {
+    if (!online || online.player !== online.host) return;
+    if (online.status !== "lobby") return;
+    const seatedCount = online.seats.filter(s => s).length;
+    if (seatedCount < 2) return;
+    const allReady = online.seats.every((s, i) => !s || online.ready[i]);
+    if (!allReady) return;
+    try {
+      const data = await api(`api/rooms/${online.code}/start`, { name: game.players[0].name });
+      adoptRoom(data, "Game started!");
+    } catch (error) { $("online-message").textContent = error.message; }
+  }
+
+  function handleLobbySeatClick(event) {
+    const readyBtn = event.target.closest('.lobby-ready-toggle');
+    if (readyBtn) {
+      const seat = Number(readyBtn.dataset.seat);
+      const currentReady = readyBtn.dataset.ready === 'true';
+      if (seat !== online.player) return; // Only toggle own ready
+      toggleReady(seat, !currentReady);
+      return;
+    }
+    const colorSwatch = event.target.closest('.lobby-color-swatch:not(.disabled)');
+    if (colorSwatch) {
+      const seat = Number(colorSwatch.dataset.seat);
+      const color = colorSwatch.dataset.color;
+      if (seat !== online.player) return; // Only change own color
+      changeColor(seat, color);
+      return;
+    }
+  }
+
+  async function toggleReady(seat, ready) {
+    if (!online || online.status !== "lobby") return;
+    try {
+      await api(`api/rooms/${online.code}/ready`, { seatIndex: seat, name: online.names[seat] });
+    } catch (error) { $("online-message").textContent = error.message; }
+  }
+
+  async function changeColor(seat, color) {
+    if (!online || online.status !== "lobby") return;
+    // Check if color is taken by another player
+    const taken = online.seats.some((s, i) => s && i !== seat && online.colors[i] === color);
+    if (taken) return;
+    try {
+      await api(`api/rooms/${online.code}/join`, { name: online.names[seat], color });
+      // After color change, need to re-ready
+      if (online.ready[seat]) {
+        await api(`api/rooms/${online.code}/ready`, { seatIndex: seat, name: online.names[seat] });
+      }
+    } catch (error) { $("online-message").textContent = error.message; }
   }
 
   // Public queue matchmaking
@@ -1125,15 +1248,26 @@ if (message) $("online-message").textContent = message;
     if (busy) { setTimeout(() => handleRoomSnapshot(data), 150); return; }
     if (!online || data.version < online.version) return;
     const wasJoined = Boolean(online.seats[0] && online.seats[1]);
+    const wasLobby = online.status === "lobby";
     online.version = data.version;
     online.seats = [...data.seats];
     online.names = [...data.names];
+    online.colors = [...data.colors];
+    online.ready = [...data.ready];
+    online.status = data.status;
+    online.host = data.host;
+    online.isPublic = data.isPublic;
     online.pending = data.pending || null;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
     const entry = data.last && data.state.totalRolls > game.totalRolls ? data.last : null;
     applyRoomState(data.state, { animate: Boolean(entry), entry });
     const joined = online.seats[0] && online.seats[1];
-    syncRoomView(joined && !wasJoined ? "Your friend is here! Go to the board when you are ready." : undefined);
+    const isLobby = data.status === "lobby";
+    if (isLobby) {
+      syncLobbyView(joined && !wasJoined ? "Your friend is here! Get ready." : undefined);
+    } else {
+      syncRoomView(joined && !wasJoined ? "Your friend is here! Go to the board when you are ready." : undefined);
+    }
     if (onlineEntered && online.pending) handleOnlineSnakePending(online.pending);
     else if (!online.pending) onlineSnakePromptId = null;
   }
@@ -1606,6 +1740,11 @@ function startGame(options = {}) {
   $("online-copy").addEventListener("click", copyInvite);
   $("online-enter").addEventListener("click", enterOnlineBoard);
   $("online-leave").addEventListener("click", leaveRoom);
+  $("lobby-start").addEventListener("click", startGameFromLobby);
+  $("lobby-leave").addEventListener("click", leaveRoom);
+  $("lobby-copy").addEventListener("click", copyInvite);
+  // Lobby seat interactions (delegated)
+  $("lobby-seats").addEventListener("click", handleLobbySeatClick);
   $("setting-sound").addEventListener("click", () => {
     preferences.sound = !preferences.sound;
     unlockAudio();

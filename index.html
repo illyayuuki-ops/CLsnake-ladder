@@ -246,7 +246,7 @@
           <button class="text-button menu-button" id="queue-cancel">Cancel search</button>
         </div>
 
-        <div class="menu-view" data-view="room" hidden>
+<div class="menu-view" data-view="room" hidden>
           <p class="eyebrow">ONLINE ROOM</p>
           <h3 class="menu-title">Room <span class="room-code" id="room-code">-----</span></h3>
           <p class="menu-tagline" id="room-status">Waiting for another player to join…</p>
@@ -259,6 +259,18 @@
             <button class="secondary-button menu-button" id="online-copy"><svg class="icon" aria-hidden="true"><use href="#i-link"/></svg><span>Copy invite link</span></button>
             <button class="primary-button menu-button" id="online-enter"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Go to the board</span></button>
             <button class="text-button menu-button" id="online-leave"><svg class="icon" aria-hidden="true"><use href="#i-exit"/></svg><span>Leave room</span></button>
+          </div>
+        </div>
+
+        <div class="menu-view" data-view="lobby" hidden>
+          <p class="eyebrow">LOBBY</p>
+          <h3 class="menu-title">Room <span class="room-code" id="lobby-code">-----</span></h3>
+          <p class="menu-tagline" id="lobby-status">Set up your game and get ready.</p>
+          <div class="lobby-seats" id="lobby-seats" role="list" aria-label="Player seats"></div>
+          <div class="menu-actions" id="lobby-actions">
+            <button class="secondary-button menu-button" id="lobby-copy"><svg class="icon" aria-hidden="true"><use href="#i-link"/></svg><span>Copy invite link</span></button>
+            <button class="primary-button menu-button" id="lobby-start" hidden><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Start game</span></button>
+            <button class="text-button menu-button" id="lobby-leave"><svg class="icon" aria-hidden="true"><use href="#i-exit"/></svg><span>Leave room</span></button>
           </div>
         </div>
 
