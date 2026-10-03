@@ -45,7 +45,7 @@
   const menuViews = [...startMenu.querySelectorAll(".menu-view")];
   const gameChrome = [...document.querySelectorAll(".game-window > *")].filter(node => node !== startMenu);
   const menuFocus = { main: "menu-play", play: "menu-friend", online: "online-create", room: "online-enter", settings: "setting-sound", exit: "exit-back" };
-  let menuOpen = true;
+  let menuOpen = false;
   let menuView = "main";
   let returnToMenu = false;
   let savedOnline = null;
@@ -273,11 +273,16 @@ function onSplashComplete() {
 
   function fitBoard() {
     const stage = $("board-stage");
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
     const style = getComputedStyle(stage);
-    const width = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    const height = stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 8;
-    // Leave a little breathing room for the tilt and user-controlled zoom.
-    const size = Math.max(1, Math.floor(Math.min(width, height) * .92));
+    const padLeft = parseFloat(style.paddingLeft) || 0;
+    const padRight = parseFloat(style.paddingRight) || 0;
+    const padTop = parseFloat(style.paddingTop) || 0;
+    const padBottom = parseFloat(style.paddingBottom) || 0;
+    const stageWidth = rect.width - padLeft - padRight;
+    const stageHeight = rect.height - padTop - padBottom;
+    const size = Math.max(1, Math.floor(Math.min(stageWidth, stageHeight)));
     $("board").style.setProperty("--board-size", `${size}px`);
   }
 
@@ -641,7 +646,7 @@ function onSplashComplete() {
     buildPieces();
     clearPaths();
     applyAppearance();
-    fitBoard();
+    requestAnimationFrame(fitBoard);
   }
 
   function render() {
@@ -1474,6 +1479,9 @@ loadSave();
   setDie(game.history[0]?.die || 1);
   if (restored && game.totalRolls) status(game.winner !== null ? `${game.players[game.winner].name} reached 100. What a lovely finish!` : `Welcome back! ${game.players[game.turn].name}’s turn. Your adventure is right where you left it.`);
   save();
+
+  // Ensure board is sized after initial layout paint
+  requestAnimationFrame(fitBoard);
 
   // Initialize splash loader and drive progress from real asset readiness
   initSplashLoader();
