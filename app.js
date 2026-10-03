@@ -573,35 +573,16 @@ function onSplashComplete() {
     syncRoomView();
   }
 
-  function syncRoomView(message) {
+function syncRoomView(message) {
     $("room-code").textContent = online?.code || "-----";
     const joined = Boolean(online && online.seats[0] && online.seats[1]);
     $("online-enter").hidden = !joined;
     if (!online) $("room-status").textContent = "No room yet.";
     else if (!joined) $("room-status").textContent = "Waiting for another player to join… share the room code.";
-    else $("room-status").textContent = `Both players are here. ${game.players[game.turn].name} plays first${game.turn === online.player ? " — that’s you!" : "."}`;
-    if (message) $("online-message").textContent = message;
-  }
-
-  function generateRoomQR(code) {
-    const canvas = $("qr-canvas");
-    const display = $("room-code-display");
-    const section = canvas.closest(".qr-section");
-    if (!canvas || !code) return;
-    canvas.innerHTML = "";
-    display.textContent = code;
-    if (typeof qrcode !== "undefined") {
-      try {
-        const qr = qrcode(0, "M");
-        const joinUrl = `${location.origin}?room=${code}`;
-        qr.addData(joinUrl);
-        qr.make();
-        canvas.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 1 });
-      } catch (e) {
-        console.warn("QR generation failed:", e);
-      }
-    }
-    section.hidden = false;
+    else $("room-status").textContent = `Both players are here. ${game.players[game.turn].name} plays first${game.turn === online.player ? " — that's you!" : "."}`;
+if (message) $("online-message").textContent = message;
+    // Show QR code for the room
+    if (online?.code) generateRoomQR(online.code);
   }
 
   function setMenuView(view) {
@@ -839,6 +820,171 @@ function onSplashComplete() {
     save();
     setMenuOpen(true, "play");
     $("online-message").textContent = "You left the room.";
+  }
+
+  async function copyInvite() {
+    const link = `${location.origin}${location.pathname}?room=${online?.code || ""}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      $("online-message").textContent = "Invite link copied. Send it to your friend!";
+    } catch {
+      $("online-message").textContent = `Share this code: ${online?.code || ""}.`;
+    }
+  }
+
+  // Public queue matchmaking
+  let queuePoll = null;
+  let queueAbort = null;
+
+  async function joinPublicQueue() {
+    if (!isAuthenticated() && !authSkipped) {
+      const authDialog = $("auth-dialog");
+      if (authDialog) authDialog.showModal();
+      return;
+    }
+    setMenuView("queue");
+    $("queue-message").textContent = "Searching for a public room…";
+    try {
+      const data = await api("api/queue", { token: authToken });
+      if (data.queued) {
+        // We created a new room, wait for someone to join
+        waitForQueueRoom(data.code);
+      } else {
+        // We joined an existing room
+        adoptRoom(data, "You've been matched!");
+      }
+    } catch (error) {
+      $("queue-message").textContent = error.message;
+      setTimeout(() => setMenuView("online-choice"), 2000);
+    }
+  }
+
+  function cancelQueue() {
+    if (queuePoll) clearTimeout(queuePoll);
+    if (queueAbort) queueAbort.abort();
+    queuePoll = null;
+    queueAbort = null;
+    api("api/queue/leave", { token: authToken }).catch(() => {});
+    setMenuView("online-choice");
+  }
+
+  function waitForQueueRoom(code) {
+    const checkRoom = async () => {
+      if (queueAbort?.signal?.aborted) return;
+      try {
+        const headers = { Accept: "application/json" };
+        if (authToken) headers.Authorization = `Bearer ${authToken}`;
+        const response = await fetch(`api/rooms/${code}?since=0`, { headers, signal: queueAbort?.signal });
+        const data = await response.json().catch(() => ({}));
+        if (queueAbort?.signal?.aborted) return;
+        if (data.status === "playing") {
+          // Room started, join it
+          adoptRoom(data, "Match found! Game starting…");
+          return;
+        }
+        // Still in lobby, keep polling
+        queuePoll = setTimeout(checkRoom, 1000);
+      } catch (error) {
+        if (queueAbort?.signal?.aborted) return;
+        queuePoll = setTimeout(checkRoom, 1000);
+      }
+    };
+    queueAbort = new AbortController();
+    checkRoom();
+  }
+
+  // QR code generation for room
+  function generateRoomQR(code) {
+    const canvas = $("qr-canvas");
+    const display = $("room-code-display");
+    const section = canvas?.closest(".qr-section");
+    if (!canvas || !code) return;
+    canvas.innerHTML = "";
+    if (display) display.textContent = code;
+    if (typeof qrcode !== "undefined") {
+      try {
+        const qr = qrcode(0, "M");
+        const joinUrl = `${location.origin}${location.pathname}?room=${code}`;
+        qr.addData(joinUrl);
+        qr.make();
+        canvas.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 1 });
+      } catch (e) {
+        console.warn("QR generation failed:", e);
+      }
+    }
+    if (section) section.hidden = false;
+  }
+
+  // Scan QR code for joining
+  async function scanQRCode() {
+    const scanBtn = $("online-scan");
+    const msg = $("online-message");
+    const codeInput = $("online-code");
+
+    if (!window.BarcodeDetector) {
+      msg.textContent = "QR scanning not supported in this browser. Enter the code manually.";
+      return;
+    }
+
+    scanBtn.disabled = true;
+    scanBtn.innerHTML = '<svg class="icon spin" aria-hidden="true"><use href="#i-refresh"/></svg><span>Scanning…</span>';
+    msg.textContent = "Point camera at a QR code…";
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("autoplay", "");
+      await video.play();
+
+      const detector = new BarcodeDetector({ formats: ["qr_code"] });
+      let scanning = true;
+
+      const scanLoop = async () => {
+        if (!scanning) return;
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes.length > 0) {
+            scanning = false;
+            const raw = barcodes[0].rawValue;
+            stream.getTracks().forEach(t => t.stop());
+            const match = raw.match(/[?&]room=([A-Z0-9]{5})/i);
+            const code = match ? match[1].toUpperCase() : raw.trim().toUpperCase().slice(0, 5);
+            if (/^[A-Z0-9]{5}$/.test(code)) {
+              codeInput.value = code;
+              msg.textContent = "";
+              joinRoom(code);
+            } else {
+              msg.textContent = "QR code did not contain a valid room code.";
+            }
+            return;
+          }
+        } catch (e) { /* ignore detection errors */ }
+        if (scanning) requestAnimationFrame(scanLoop);
+      };
+      scanLoop();
+
+      setTimeout(() => {
+        if (scanning) {
+          scanning = false;
+          stream.getTracks().forEach(t => t.stop());
+          msg.textContent = "Scan timed out. Try again or enter the code manually.";
+        }
+      }, 30000);
+    } catch (err) {
+      stream?.getTracks?.().forEach(t => t.stop());
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        msg.textContent = "Camera permission denied. Enter the room code manually.";
+      } else if (err.name === "NotFoundError") {
+        msg.textContent = "No camera found. Enter the room code manually.";
+      } else {
+        msg.textContent = "Could not start camera. Enter the room code manually.";
+      }
+    } finally {
+      scanBtn.disabled = false;
+      scanBtn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan QR</span>';
+    }
   }
 
   function enterOnlineBoard() {
@@ -1433,13 +1579,19 @@ function startGame(options = {}) {
   $("menu-fern").addEventListener("click", () => startGame({ mode: "computer" }));
   $("menu-online").addEventListener("click", () => {
     if (isAuthenticated() || authSkipped) {
-      setMenuView("online");
-      $("online-message").textContent = "Create a room, or join with a code from a friend.";
+      setMenuView("online-choice");
+      $("online-message").textContent = "Choose public matchmaking or a private room.";
     } else {
       const authDialog = $("auth-dialog");
       if (authDialog) authDialog.showModal();
     }
   });
+  $("online-public").addEventListener("click", () => joinPublicQueue());
+  $("online-private").addEventListener("click", () => {
+    setMenuView("online");
+    $("online-message").textContent = "Create a room, or join with a code from a friend.";
+  });
+  $("queue-cancel").addEventListener("click", cancelQueue);
   $("menu-continue").addEventListener("click", () => {
     hideMenu();
     status(`Welcome back! ${game.players[game.turn].name}’s turn.`);

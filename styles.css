@@ -619,6 +619,12 @@ legend { font-size: 11px; font-weight: 650; padding: 0; margin-bottom: 9px; }
 /* Camera permission error */
 .scan-error { font-size: clamp(8.5px, 1.35vh, 11px); color: #fb7185; margin-top: 4px; min-height: 1.2em; text-align: center; }
 
+/* Queue styles */
+.queue-spinner { display: flex; align-items: center; justify-content: center; margin: clamp(12px, 2.5vh, 20px) 0; }
+.queue-spinner .spinner { width: clamp(40px, 8vh, 56px); height: clamp(40px, 8vh, 56px); animation: spin 1s linear infinite; color: #cfe6b6; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#queue-message { text-align: center; }
+
 @media (max-height: 470px) {
   .menu-mark { display: none; }
   .menu-tagline { display: none; }
