@@ -1,5 +1,4 @@
 const CACHE_VERSION = 'v3';
-// Bump CACHE_VERSION whenever APP_SHELL contents change to ensure fresh app code is fetched
 const CACHE_NAME = `snakes-ladders-${CACHE_VERSION}`;
 
 const APP_SHELL = [

@@ -464,7 +464,8 @@ function onSplashComplete() {
   }
 
   function pawnSVG(index, prefix) {
-    const color = COLORS[index];
+    // Use online colors if available, otherwise fall back to default palette
+    const color = (online && online.colors && online.colors[index]) ? online.colors[index] : COLORS[index];
     const dark = index === 0 ? "#935747" : "#40697e";
     const light = index === 0 ? "#e79f86" : "#91bbca";
     // Prefixes make gradient IDs unique across board pieces and player avatars.
@@ -477,6 +478,7 @@ function onSplashComplete() {
   }
 
   function buildPlayers() {
+    const playerColors = (online && online.colors) ? online.colors : COLORS;
     $("players").innerHTML = [0, 1].map(i => `<article class="player-card" id="player-card-${i}" aria-label="Player ${i + 1}"><div class="player-card-main"><div class="player-avatar">${pawnSVG(i, `avatar-${i}`)}</div><div class="player-details"><h3 id="player-name-${i}"></h3><p><span class="active-dot" id="player-dot-${i}"></span><span id="player-state-${i}"></span></p></div><div class="player-position"><strong id="player-position-${i}">01</strong><small>SQUARE</small></div></div><div class="player-progress" role="progressbar" aria-valuemin="1" aria-valuemax="100" aria-valuenow="1" id="player-progress-${i}"><span></span></div></article>`).join("");
   }
 
@@ -539,7 +541,8 @@ function onSplashComplete() {
     $("turn-name").textContent = game.winner !== null ? `${game.players[game.winner].name} wins!` : `${game.players[game.turn].name}’s turn`;
     $("hud-turn").textContent = game.winner !== null ? `${game.players[game.winner].name} wins` : game.players[game.turn].name;
     $("hud-board").textContent = Game.BOARDS[game.boardIndex].name;
-    document.querySelector(".turn-dot").style.background = COLORS[game.turn];
+    const playerColors = (online && online.colors) ? online.colors : COLORS;
+    document.querySelector(".turn-dot").style.background = playerColors[game.turn];
     $("round-label").textContent = `Round ${pad(Math.floor(Math.max(0, game.totalRolls - (game.winner !== null ? 1 : 0)) / 2) + 1)}`;
     $("mode-label").textContent = online ? `Room ${online.code}` : game.mode === "computer" ? "Playing with Fern" : "Playing with a friend";
     $("mode-button").setAttribute("aria-label", online ? "Back to the game menu" : "Choose online, Fern, or friend play");
@@ -851,7 +854,17 @@ function syncRoomView(message) {
       const response = await fetch(`api/rooms/${code}?player=${player}&since=${version}`, { headers, signal: pollAbort.signal });
       const data = await response.json().catch(() => ({}));
       if (!online || online.code !== code) return;
-      if (!response.ok) throw new Error(data.error || "Room unavailable.");
+      if (!response.ok) {
+        if (response.status === 404 || response.status === 410) {
+          // Room gone, leave cleanly
+          stopOnline(false);
+          save();
+          setMenuOpen(true, "play");
+          $("online-message").textContent = "That room has ended. Create a new one or ask for a fresh code.";
+          return;
+        }
+        throw new Error(data.error || "Room unavailable.");
+      }
       if (!data.unchanged) handleRoomSnapshot(data);
     } catch (error) {
       if (error?.name === "AbortError") return;
@@ -872,7 +885,10 @@ function syncRoomView(message) {
     savedOnline = { code: data.code, player: data.player };
     onlineEntered = false;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
-    applyRoomState(data.state, {});
+    // Only apply game state if it exists (not in lobby)
+    if (data.state) {
+      applyRoomState(data.state, {});
+    }
     save();
     // Go to lobby view for lobby status, room view for playing
     setMenuView(data.status === "playing" ? "room" : "lobby");
@@ -1302,14 +1318,21 @@ function syncRoomView(message) {
     online.isPublic = data.isPublic;
     online.pending = data.pending || null;
     game.players.forEach((player, i) => { if (data.names[i]) player.name = data.names[i]; });
-    const entry = data.last && data.state.totalRolls > game.totalRolls ? data.last : null;
-    applyRoomState(data.state, { animate: Boolean(entry), entry });
+    const entry = data.last && data.state && data.state.totalRolls > game.totalRolls ? data.last : null;
+    // Only apply room state if it exists (i.e., game has started)
+    if (data.state) {
+      applyRoomState(data.state, { animate: Boolean(entry), entry });
+    }
     const joined = online.seats[0] && online.seats[1];
     const isLobby = data.status === "lobby";
     if (isLobby) {
       syncLobbyView(joined && !wasJoined ? "Your friend is here! Get ready." : undefined);
     } else {
       syncRoomView(joined && !wasJoined ? "Your friend is here! Go to the board when you are ready." : undefined);
+      // If we just transitioned to playing, enter the board
+      if (wasLobby && !isLobby) {
+        enterOnlineBoard();
+      }
     }
     if (onlineEntered && online.pending) handleOnlineSnakePending(online.pending);
     else if (!online.pending) onlineSnakePromptId = null;
