@@ -668,6 +668,14 @@ function syncRoomView(message) {
     if (open) { stopComputerTimer(); setMenuView(view); }
   }
 
+  function setMenuView(view) {
+    menuView = menuFocus[view] ? view : "main";
+    menuViews.forEach(node => { node.hidden = node.dataset.view !== menuView; });
+    syncMenu();
+    const target = $(menuFocus[menuView]);
+    if (target && !target.hidden) target.focus({ preventScroll: true });
+  }
+
   function hideMenu() {
     setMenuOpen(false);
     scheduleComputer();
