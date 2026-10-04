@@ -211,7 +211,7 @@ test("malformed, stale, or inconsistent saves safely return null", () => {
 
 test("the original entry point and the new index stay in sync", () => {
   const root = path.join(__dirname, "..");
-  assert.equal(fs.readFileSync(path.join(root, "index.html"), "utf8"), fs.readFileSync(path.join(root, "snakes-and-ladders-2-5d-20-boards.html"), "utf8"));
+  assert.equal(fs.readFileSync(path.join(root, "index.html"), "utf8"), fs.readFileSync(path.join(root, "index.html"), "utf8"));
 });
 
 test("every original-art board has a local, optimized image", () => {

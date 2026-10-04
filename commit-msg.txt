@@ -1,7 +1,0 @@
-Fix manifest: use SVG icons instead of PNG
-
-- Update manifest.webmanifest to use SVG icons (icon-192.svg, icon-512.svg) instead of logo.png
-- SVG icons are smaller and more scalable
-- logo.png still exists in repo and is used for favicon/apple-touch-icon in index.html
-
-All 39 tests pass (31 engine + 8 server).
