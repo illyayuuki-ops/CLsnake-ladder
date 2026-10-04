@@ -2084,22 +2084,6 @@ $("sound-toggle").addEventListener("click", () => {
     }
   }
 
-  // Guest/skip buttons
-  const skipLogin = $("auth-skip");
-  if (skipLogin) {
-    skipLogin.addEventListener("click", () => {
-      setGuestMode();
-      $("auth-dialog").close();
-    });
-  }
-  const skipRegister = $("auth-skip-register");
-  if (skipRegister) {
-    skipRegister.addEventListener("click", () => {
-      setGuestMode();
-      $("auth-dialog").close();
-    });
-  }
-
   document.addEventListener("keydown", event => {
     if (event.code !== "Space" || event.repeat || event.ctrlKey || event.altKey || event.metaKey || anyDialogOpen()) return;
     if (event.target.closest("button, a, input, textarea, select, [tabindex], [contenteditable='true']")) return;

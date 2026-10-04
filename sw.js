@@ -12,10 +12,8 @@ const APP_SHELL = [
   './assets/favicon.svg',
   './assets/fonts/dm-sans-latin.woff2',
   './manifest.webmanifest',
-  './assets/icons/icon-192.png',
-  './assets/icons/icon-192-maskable.png',
-  './assets/icons/icon-512.png',
-  './assets/icons/icon-512-maskable.png',
+  './logo.png',
+  './vendor/qrcode.min.js',
 ];
 
 const BOARD_IMAGES = Array.from({ length: 20 }, (_, i) =>
