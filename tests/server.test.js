@@ -519,11 +519,19 @@ test("Existing 2-player private flow still works (create→join→ready→start�
   for (let i = 0; i < 6; i++) {
     const playerTokens = [t1, t2];
     const result = await request(origin, `/api/rooms/${code}/roll`, { seatIndex: state.turn }, playerTokens[state.turn]);
-    if (result.status !== 200) {
-      console.log("Roll failed:", result, "turn:", state.turn);
+    if (result.status === 409 && result.data.pending) {
+      // Snake hit - resolve by taking the slide
+      const resolveResult = await request(origin, `/api/rooms/${code}/resolve`, { 
+        seatIndex: state.turn, 
+        choice: "slide", 
+        riddleId: result.data.pending.id 
+      }, playerTokens[state.turn]);
+      assert.equal(resolveResult.status, 200);
+      state = resolveResult.data.state;
+    } else {
+      assert.equal(result.status, 200);
+      state = result.data.state;
     }
-    assert.equal(result.status, 200);
-    state = result.data.state;
     if (state.winner !== null) break;
   }
 });
