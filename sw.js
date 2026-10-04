@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `snakes-ladders-${CACHE_VERSION}`;
 
 const APP_SHELL = [
@@ -115,7 +115,11 @@ self.addEventListener('fetch', event => {
   const isSW = url.pathname.endsWith('/sw.js');
   const isIndexHTML = url.pathname === '/' || url.pathname === '/index.html';
 
-  if (isNavigate || isScript || isStyle || isManifest || isSW || isIndexHTML) {
+  if (isNavigate) {
+    event.respondWith(fetch(request).catch(() => caches.match('./index.html')));
+    return;
+  }
+  if (isScript || isStyle || isManifest || isSW || isIndexHTML) {
     event.respondWith(networkFirst(request));
     return;
   }
