@@ -7,6 +7,7 @@
   const SAVE_KEY = "snakes-and-ladders:v2";
   const COLORS = ["#ca705e", "#5b91ac"];
   const DEFAULT_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
+  const COLOR_HEX = { blue: "#5b91ac", red: "#ca705e", green: "#316448", yellow: "#e8efe3", white: "#f6f7f2", black: "#0b1020" };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const BOARDS_PER_PAGE = 4;
   // Kept from the original game for fast, deterministic animation tests.
@@ -466,21 +467,24 @@ function onSplashComplete() {
 
   function pawnSVG(index, prefix) {
     // Use online colors if available, otherwise fall back to default palette
-    const color = (online && online.colors && online.colors[index]) ? online.colors[index] : COLORS[index];
-    const dark = index === 0 ? "#935747" : "#40697e";
-    const light = index === 0 ? "#e79f86" : "#91bbca";
+    const colorName = (online && online.colors && online.colors[index]) ? online.colors[index] : DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+    const color = COLOR_HEX[colorName] || COLORS[index % COLORS.length];
+    const dark = index % 2 === 0 ? "#935747" : "#40697e";
+    const light = index % 2 === 0 ? "#e79f86" : "#91bbca";
     // Prefixes make gradient IDs unique across board pieces and player avatars.
     return `<svg viewBox="0 0 34 47" xmlns="${NS}" aria-hidden="true"><defs><linearGradient id="${prefix}" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="${light}"/><stop offset=".55" stop-color="${color}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><ellipse cx="17" cy="43" rx="14" ry="3.2" fill="${dark}"/><path d="M5 41q2-5 7-6l2-12h6l2 12q5 1 7 6z" fill="url(#${prefix})" stroke="${dark}" stroke-width="1.1"/><ellipse cx="17" cy="23" rx="7.2" ry="2.5" fill="${color}" stroke="${dark}" stroke-width=".8"/><circle cx="17" cy="12" r="9" fill="url(#${prefix})" stroke="${dark}" stroke-width="1.1"/><ellipse cx="14" cy="9" rx="2.3" ry="1.6" fill="#fff" opacity=".3"/><text x="17" y="35" fill="#fff7e7" font-family="DM Sans, sans-serif" font-size="9" text-anchor="middle" font-weight="750">${index + 1}</text><path d="M7 41h20" stroke="${light}" stroke-width="1.2" stroke-linecap="round" opacity=".7"/></svg>`;
   }
 
   function buildPieces() {
-    $("pieces").innerHTML = [0, 1].map(i => `<div class="pawn" id="pawn-${i}"><div class="pawn-shadow"></div><div class="pawn-body">${pawnSVG(i, `piece-${i}`)}</div></div>`).join("");
+    const playerCount = online ? online.seats.filter(s => s).length : 2;
+    $("pieces").innerHTML = Array.from({ length: playerCount }, (_, i) => `<div class="pawn" id="pawn-${i}"><div class="pawn-shadow"></div><div class="pawn-body">${pawnSVG(i, `piece-${i}`)}</div></div>`).join("");
     visualPositions.forEach((n, i) => positionPawn(i, n));
   }
 
   function buildPlayers() {
-    const playerColors = (online && online.colors) ? online.colors : COLORS;
-    $("players").innerHTML = [0, 1].map(i => `<article class="player-card" id="player-card-${i}" aria-label="Player ${i + 1}"><div class="player-card-main"><div class="player-avatar">${pawnSVG(i, `avatar-${i}`)}</div><div class="player-details"><h3 id="player-name-${i}"></h3><p><span class="active-dot" id="player-dot-${i}"></span><span id="player-state-${i}"></span></p></div><div class="player-position"><strong id="player-position-${i}">01</strong><small>SQUARE</small></div></div><div class="player-progress" role="progressbar" aria-valuemin="1" aria-valuemax="100" aria-valuenow="1" id="player-progress-${i}"><span></span></div></article>`).join("");
+    const playerCount = online ? online.seats.filter(s => s).length : 2;
+    const playerColors = (online && online.colors) ? online.colors : (online ? DEFAULT_COLORS.slice(0, online.seats.filter(s => s).length) : COLORS);
+    $("players").innerHTML = Array.from({ length: playerCount }, (_, i) => `<article class="player-card" id="player-card-${i}" aria-label="Player ${i + 1}"><div class="player-card-main"><div class="player-avatar">${pawnSVG(i, `avatar-${i}`)}</div><div class="player-details"><h3 id="player-name-${i}"></h3><p><span class="active-dot" id="player-dot-${i}"></span><span id="player-state-${i}"></span></p></div><div class="player-position"><strong id="player-position-${i}">01</strong><small>SQUARE</small></div></div><div class="player-progress" role="progressbar" aria-valuemin="1" aria-valuemax="100" aria-valuenow="1" id="player-progress-${i}"><span></span></div></article>`).join("");
   }
 
   function positionPawn(index, square) {
@@ -542,7 +546,7 @@ function onSplashComplete() {
     $("turn-name").textContent = game.winner !== null ? `${game.players[game.winner].name} wins!` : `${game.players[game.turn].name}’s turn`;
     $("hud-turn").textContent = game.winner !== null ? `${game.players[game.winner].name} wins` : game.players[game.turn].name;
     $("hud-board").textContent = Game.BOARDS[game.boardIndex].name;
-    const playerColors = (online && online.colors) ? online.colors : COLORS;
+    const playerColors = (online && online.colors) ? online.colors : (online ? online.seats.map((s, i) => s ? (online.colors[i] || DEFAULT_COLORS[i]) : "").filter(Boolean) : COLORS);
     document.querySelector(".turn-dot").style.background = playerColors[game.turn];
     $("round-label").textContent = `Round ${pad(Math.floor(Math.max(0, game.totalRolls - (game.winner !== null ? 1 : 0)) / 2) + 1)}`;
     $("mode-label").textContent = online ? `Room ${online.code}` : game.mode === "computer" ? "Playing with Fern" : "Playing with a friend";
@@ -920,7 +924,14 @@ function syncRoomView(message) {
     try {
       const color = $("online-join-color")?.value || "blue";
       adoptRoom(await api(`api/rooms/${code}/join`, { name: game.players[0].name, color }), `You joined room ${code}.`);
-    } catch (error) { $("online-message").textContent = error.message; }
+    } catch (error) {
+      const msg = error.message || "Could not join room";
+      if (msg.includes("404") || msg.includes("410") || msg.includes("expired") || msg.includes("ended")) {
+        $("online-message").textContent = "That room has ended or the code is invalid. Create a new room or ask for a fresh code.";
+      } else {
+        $("online-message").textContent = msg;
+      }
+    }
   }
 
   async function rejoinRoom() {
