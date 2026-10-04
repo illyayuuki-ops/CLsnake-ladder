@@ -26,7 +26,11 @@ const FANTASY_IMAGES = Array.from({ length: 20 }, (_, i) =>
 
 async function precacheAppShell() {
   const cache = await caches.open(CACHE_NAME);
-  await cache.addAll(APP_SHELL);
+  const results = await Promise.allSettled(APP_SHELL.map(f => cache.add(f)));
+  const failed = results.filter(r => r.status === 'rejected');
+  if (failed.length > 0) {
+    console.warn('[SW] Some APP_SHELL resources failed to precache:', failed.map((r, i) => `${APP_SHELL[i]}: ${r.reason}`));
+  }
 }
 
 async function cleanOldCaches() {
