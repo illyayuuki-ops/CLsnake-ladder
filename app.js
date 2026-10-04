@@ -2055,6 +2055,24 @@ $("sound-toggle").addEventListener("click", () => {
     });
   }
 
+  // Auth toggle button (login/register toggle)
+  const authToggle = $("auth-toggle");
+  if (authToggle) {
+    authToggle.addEventListener("click", () => {
+      const loginView = $("auth-login-view");
+      const registerView = $("auth-register-view");
+      if (loginView.hidden) {
+        loginView.hidden = false;
+        registerView.hidden = true;
+        authToggle.textContent = "New here? Create account";
+      } else {
+        loginView.hidden = true;
+        registerView.hidden = false;
+        authToggle.textContent = "Have an account? Sign in";
+      }
+    });
+  }
+
   // Guest/skip buttons
   const skipLogin = $("auth-skip");
   if (skipLogin) {

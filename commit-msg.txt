@@ -1,0 +1,34 @@
+Online client Part B — private/public lobby, ready, colors
+
+Task 1 — Private/Public selection view (online-choice):
+- Wired online-public → joinPublicQueue()
+- Wired online-private → online view with Create/Join buttons
+
+Task 2 — Private create/join views:
+- createRoom() sends {name, color} to api/rooms (server picks board)
+- joinRoom() validates 5-char code, sends {name, color} to /join
+- join-scan button uses existing scanQRCode() with BarcodeDetector; hidden if unsupported
+
+Task 3 — Lobby screen (data-view=lobby):
+- syncLobbyView() renders up to 4 seats from seats/names/colors/ready
+- Each seat shows name, ready badge, pawn color dot, empty seats show "Open seat"
+- Ready toggle button per player → POST ready with {seatIndex}
+- Host sees Start button enabled at >=2 players and all ready → POST start
+- Leave button calls leaveRoom() → stopOnline + back to menu
+- QR code in lobby via generateRoomQR() using vendor/qrcode.min.js
+
+Task 4 — Color picker:
+- 6 swatches (blue, red, green, yellow, white, black) in lobby and create/join
+- Disable taken colors from online.colors[] via disabled attribute
+- Color choice sent with join/ready payloads; pawn rendering uses online.colors[]
+
+Task 5 — Lobby->playing transition + N-seat fixes:
+- onlineReady = status === "playing" (not hardcoded seats[0] && seats[1])
+- onlineMyTurn = game.turn === online.player (seat index 0-3)
+- handleRoomSnapshot: when status flips to "playing", applyRoomState + enterOnlineBoard()
+- ?room= invite flow preserved in onSplashComplete
+
+styles.css:
+- .auth-dialog .name-fields: flex column, label above input (match existing dialog styling)
+
+All 39 tests pass (31 engine + 8 server).
