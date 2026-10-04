@@ -1,15 +1,23 @@
-/* Presentation, animation, and browser integrations. Game rules live in game-engine.js. */
+﻿/* Presentation, animation, and browser integrations. Game rules live in game-engine.js. */
 (() => {
   "use strict";
   const Game = window.SnakeLadder;
-  const $ = id => document.getElementById(id);
+  const $ = id => {
+    const el = document.getElementById(id);
+    if (!el) console.warn(`$("${id}") not found`);
+    return el;
+  };
+  const on = (id, event, fn) => {
+    const el = $(id);
+    if (el) el.addEventListener(event, fn);
+    else console.warn(`on("${id}", "${event}"): element not found, listener skipped`);
+  };
   const NS = "http://www.w3.org/2000/svg";
   const SAVE_KEY = "snakes-and-ladders:v2";
   const COLORS = ["#ca705e", "#5b91ac"];
   const DEFAULT_COLORS = ["blue", "red", "green", "yellow", "white", "black"];
   const COLOR_HEX = { blue: "#5b91ac", red: "#ca705e", green: "#316448", yellow: "#e8efe3", white: "#f6f7f2", black: "#0b1020" };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const BOARDS_PER_PAGE = 4;
   // Kept from the original game for fast, deterministic animation tests.
   const searchParams = new URLSearchParams(location.search);
   const requestedFast = Number(searchParams.get("fast"));
@@ -24,11 +32,9 @@
   let gameEpoch = 0;
   let computerTimer = null;
   let confettiTimer = null;
-  let selectedBoard = 0;
   let currentFilter = null;
   let localFriendName = "Player 2";
   let audioContext = null;
-  let pickerPage = 0;
   let visualPositions = [1, 1];
   let artworkState = "loading";
   const boardCamera = {
@@ -259,7 +265,7 @@ function onSplashComplete() {
     lastSheetTrigger = triggerEl;
     if (sheetId === "players-sheet") {
       playersSheetOpen = true;
-      $("players-sheet-body").innerHTML = $("players-panel").innerHTML;
+      $("players-sheet-body").innerHTML = document.querySelector(".players-panel").innerHTML;
       $("players-sheet-body").querySelectorAll("button").forEach(btn => {
         if (btn.id === "edit-players" || btn.id === "newgame") {
           btn.addEventListener("click", () => {
@@ -271,7 +277,7 @@ function onSplashComplete() {
       });
     } else if (sheetId === "activity-sheet") {
       activitySheetOpen = true;
-      $("activity-sheet-body").innerHTML = $("activity-panel").innerHTML;
+      $("activity-sheet-body").innerHTML = document.querySelector(".activity-panel").innerHTML;
     }
     sheet.hidden = false;
     scrim.classList.add("is-open");
@@ -1644,62 +1650,6 @@ function startGame(options = {}) {
     if (!dialog.open) dialog.showModal();
   }
 
-  function renderPicker() {
-    const grid = $("board-picker");
-    if (grid.children.length) { updateBoardSelection(); return; }
-    Game.BOARDS.forEach((board, i) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "board-choice";
-      button.dataset.board = i;
-      button.setAttribute("aria-label", `Board ${i + 1}: ${board.name}`);
-      const preview = document.createElement("span");
-      preview.className = "board-preview";
-      const image = document.createElement("img");
-      // Lightweight previews are resized copies of the supplied JPGs, not redrawn boards.
-      image.src = `assets/fantasy/board-${pad(i + 1)}.webp`;
-      image.alt = "";
-      image.loading = "lazy";
-      preview.appendChild(image);
-      button.appendChild(preview);
-      const label = document.createElement("span");
-      label.className = "board-choice-name";
-      label.textContent = board.name;
-      button.appendChild(label);
-      const number = document.createElement("span");
-      number.className = "board-choice-number";
-      button.appendChild(number);
-      const check = document.createElement("span");
-      check.className = "board-choice-check";
-      check.innerHTML = icon("check");
-      button.appendChild(check);
-      grid.appendChild(button);
-    });
-    updateBoardSelection();
-  }
-
-  function updateBoardSelection() {
-    $("board-picker").querySelectorAll(".board-choice").forEach(button => {
-      const i = Number(button.dataset.board);
-      button.setAttribute("aria-pressed", String(i === selectedBoard));
-      button.hidden = Math.floor(i / BOARDS_PER_PAGE) !== pickerPage;
-      button.querySelector(".board-choice-number").textContent = `BOARD ${pad(i + 1)}${i === game.boardIndex ? " · CURRENT" : ""}`;
-    });
-    $("selected-board-label").textContent = Game.BOARDS[selectedBoard].name;
-    $("board-page-label").textContent = `Boards ${pickerPage * BOARDS_PER_PAGE + 1}–${Math.min((pickerPage + 1) * BOARDS_PER_PAGE, Game.BOARDS.length)} of ${Game.BOARDS.length}`;
-    $("previous-boards").disabled = pickerPage === 0;
-    $("next-boards").disabled = (pickerPage + 1) * BOARDS_PER_PAGE >= Game.BOARDS.length;
-    $("play-board").innerHTML = `${selectedBoard === game.boardIndex ? "Keep playing" : "Let’s play"}${icon("arrow")}`;
-  }
-
-  function openBoards() {
-    if (busy) return;
-    selectedBoard = game.boardIndex;
-    pickerPage = Math.floor(selectedBoard / BOARDS_PER_PAGE);
-    renderPicker();
-    openDialog($("boards-dialog"));
-  }
-
   function syncNameField() {
     const computer = $("setup-form").elements.mode.value === "computer";
     const field = $("player-two-name");
@@ -1863,7 +1813,6 @@ function startGame(options = {}) {
     applyAppearance();
     save();
   });
-  $("setting-board").addEventListener("click", () => { returnToMenu = true; setMenuOpen(false); openBoards(); });
   $("setting-names").addEventListener("click", () => { returnToMenu = true; setMenuOpen(false); openSetup(); });
   $("roll").addEventListener("click", () => { unlockAudio(); playTurn(); });
   $("snake-close").addEventListener("click", () => completeSnakePrompt({ choice: "slide" }));
@@ -1878,7 +1827,6 @@ function startGame(options = {}) {
   $("newgame").addEventListener("click", openSetup);
   $("edit-players").addEventListener("click", openSetup);
   $("mode-button").addEventListener("click", () => setMenuOpen(true, online ? "room" : "play"));
-  $("change-board").addEventListener("click", openBoards);
   $("how-to-play").addEventListener("click", () => { if (!busy) openDialog($("rules-dialog")); });
   $("show-ladders").addEventListener("click", () => filterPaths("ladder"));
   $("show-snakes").addEventListener("click", () => filterPaths("snake"));
@@ -1911,33 +1859,6 @@ $("sound-toggle").addEventListener("click", () => {
       if (group) { event.preventDefault(); inspectPath(group); }
     }
   });
-  $("board-picker").addEventListener("click", event => {
-    const choice = event.target.closest(".board-choice");
-    if (!choice) return;
-    selectedBoard = Number(choice.dataset.board);
-    updateBoardSelection();
-  });
-  $("shuffle-board").addEventListener("click", () => {
-    selectedBoard = (selectedBoard + 1 + Math.floor(Math.random() * (Game.BOARDS.length - 1))) % Game.BOARDS.length;
-    pickerPage = Math.floor(selectedBoard / BOARDS_PER_PAGE);
-    updateBoardSelection();
-  });
-  $("previous-boards").addEventListener("click", () => { pickerPage--; updateBoardSelection(); });
-  $("next-boards").addEventListener("click", () => { pickerPage++; updateBoardSelection(); });
-  $("board-picker").addEventListener("keydown", event => {
-    const offsets = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -2, ArrowDown: 2 };
-    const choice = event.target.closest(".board-choice");
-    if (!choice || !(event.key in offsets)) return;
-    event.preventDefault();
-    const next = Math.max(0, Math.min(Game.BOARDS.length - 1, Number(choice.dataset.board) + offsets[event.key]));
-    pickerPage = Math.floor(next / BOARDS_PER_PAGE);
-    updateBoardSelection();
-    $("board-picker").querySelector(`[data-board="${next}"]`).focus({ preventScroll: true });
-  });
-  $("play-board").addEventListener("click", () => {
-    if (selectedBoard === game.boardIndex) $("boards-dialog").close();
-    else startGame({ boardIndex: selectedBoard });
-  });
   $("setup-form").addEventListener("change", event => { if (event.target.name === "mode") syncNameField(); });
   $("setup-form").addEventListener("submit", event => {
     event.preventDefault();
@@ -1946,7 +1867,6 @@ $("sound-toggle").addEventListener("click", () => {
     startGame({ mode: form.elements.mode.value, names: [$("player-one-name").value, $("player-two-name").value] });
   });
   $("play-again").addEventListener("click", () => startGame(game.mode === "computer" ? { boardIndex: Math.floor(Math.random() * Game.BOARDS.length) } : {}));
-  $("winner-change-board").addEventListener("click", () => { $("win-dialog").close(); openBoards(); });
   document.querySelectorAll("[data-close-dialog]").forEach(button => {
     button.addEventListener("click", () => button.closest("dialog").close());
   });
@@ -2055,23 +1975,6 @@ $("sound-toggle").addEventListener("click", () => {
     });
   }
 
-  // Auth toggle button (login/register toggle)
-  const authToggle = $("auth-toggle");
-  if (authToggle) {
-    authToggle.addEventListener("click", () => {
-      const loginView = $("auth-login-view");
-      const registerView = $("auth-register-view");
-      if (loginView.hidden) {
-        loginView.hidden = false;
-        registerView.hidden = true;
-        authToggle.textContent = "New here? Create account";
-      } else {
-        loginView.hidden = true;
-        registerView.hidden = false;
-        authToggle.textContent = "Have an account? Sign in";
-      }
-    });
-  }
 
   // Guest/skip buttons
   const skipLogin = $("auth-skip");
