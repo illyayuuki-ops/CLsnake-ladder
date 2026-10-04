@@ -24,7 +24,7 @@
 </head>
 <body>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
-    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5c-3-2-7-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1Zm0 0v15"/></symbol>
     <symbol id="i-volume" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
     <symbol id="i-muted" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5V4Zm5 5 6 6m0-6-6 6"/></symbol>
@@ -77,7 +77,7 @@
     </main>
     <header class="site-header">
       <a class="brand" href="./index.html" aria-label="Snakes and Ladders home">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/></svg></span>
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/><path d="M16 33 11 22l9 10 8-10 6 11"/></svg></span>
         <span class="brand-name">snakes <span class="brand-amp">&amp;</span> ladders<small>THE ORIGINAL BOARDS. READY TO ROLL.</small></span>
       </a>
       <div class="header-stats" aria-label="Current game">
@@ -86,11 +86,11 @@
         <div class="header-stat"><span>MOVES</span><strong id="hud-moves">0</strong></div>
       </div>
       <div class="header-actions">
-        <button class="mode-button" id="mode-button" aria-label="Choose friend or computer play" aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg><strong id="mode-label">Playing with a friend</strong><svg class="icon chevron" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+        <button class="mode-button" id="mode-button" aria-label="Choose friend or computer play" aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg><strong id="mode-label">Playing with a friend</strong></button>
         <button class="icon-button" id="how-to-play" aria-label="How to play" title="How to play"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></button>
         <button class="icon-button" id="sound-toggle" aria-label="Turn sound on" aria-pressed="false" title="Turn sound on"><svg class="icon" aria-hidden="true"><use href="#i-muted"/></svg></button>
         <button class="icon-button sheet-toggle" id="players-toggle" aria-label="Show players" aria-expanded="false" title="Show players"><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg></button>
-        <button class="icon-button sheet-toggle" id="activity-toggle" aria-label="Show recent moves" aria-expanded="false" title="Show recent moves"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></button>
+        <button class="icon-button sheet-toggle" id="activity-toggle" aria-label="Show recent moves" aria-expanded="false" title="Show recent moves"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg></button>
       </div>
     </header>
 
@@ -112,11 +112,11 @@
               <span class="board-side" aria-hidden="true"></span>
               <img class="fantasy-art" id="fantasy-art" src="snakes-and-ladders-board-01.jpg" alt="Original Snakes and Ladders board 1" decoding="async" fetchpriority="high">
               <div class="tracking-layer" id="tracking-layer" inert aria-hidden="true">
-                <svg id="board-svg" class="board-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Original game board. Select a snake head or ladder to see its tracked destination."></svg>
+                <svg id="board-svg" class="board-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Original game board. Select a snake head or ladder to see info."></svg>
                 <div class="pieces" id="pieces" aria-hidden="true"></div>
               </div>
               <div class="art-loading" id="art-loading" role="status" aria-live="polite"><span class="picture-spinner" aria-hidden="true"></span><span>Loading the original picture…</span></div>
-              <div class="art-error" id="art-error" role="alert" hidden><p><strong>Original picture unavailable.</strong><span>Keep the supplied JPG files beside the HTML.</span></p><button class="small-button" id="retry-art">Retry picture</button></div>
+              <div class="art-error" id="art-error" role="alert" hidden><p><strong>Original picture unavailable.</strong><span>Keep the supplied JPG files beside the HTML.</span></p><button class="small-button" id="retry-art">Retry</button></div>
             </div>
             <span class="board-camera-hint" id="board-camera-hint" aria-hidden="true">Drag to rotate · scroll or pinch to zoom · Home to reset</span>
           </div>
@@ -125,9 +125,9 @@
               <button id="show-ladders" class="legend-button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-ladder"/></svg><span>9 ladders</span></button>
               <button id="show-snakes" class="legend-button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg><span>10 snake heads</span></button>
             </div>
-            <button class="view-button" id="view-toggle" aria-label="Enable 3D board view" aria-pressed="false" title="Toggle 3D board view"><svg class="icon" aria-hidden="true"><use href="#i-tilt"/></svg><span>3D view</span></button>
+            <button class="view-button" id="view-toggle" aria-label="Enable 3D board view" aria-pressed="false" title="Toggle 3D board view"><svg class="icon" aria-hidden="true"><use href="#i-tilt"/></svg></button>
           </div>
-          <div class="board-status"><span class="status-icon"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"/></svg></span><p id="board-message" role="status" aria-live="polite" aria-atomic="true">Your adventure starts on square 1. Let’s roll!</p></div>
+          <div class="board-status"><span class="status-icon"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"/></svg></span><p id="board-message" role="status" aria-live="polite" aria-atomic="true">A little luck and a few ladders.</p></div>
         </section>
 
         <aside class="game-sidebar" aria-label="Game controls and recent moves">
@@ -135,10 +135,10 @@
             <div class="turn-card-top"><p class="eyebrow">MAKE YOUR MOVE</p><span class="round-label" id="round-label">Round 01</span></div>
             <h2 id="turn-label"><span class="turn-dot"></span><span id="turn-name">Player 1’s turn</span></h2>
             <div class="dice-stage">
-              <div id="die" class="die" data-value="1" role="img" aria-label="Die showing 1"><span class="pip p1"></span><span class="pip p2"></span><span class="pip p3"></span><span class="pip p4"></span><span class="pip p5"></span><span class="pip p6"></span><span class="pip p7"></span><span class="pip p8"></span><span class="pip p9"></span></div>
+              <div id="die" class="die" data-value="1" role="img" aria-label="Die showing 1"><span class="pip p1"></span><span class="pip p2"></span><span class="pip p3"></span><span class="pip p4"></span><span class="pip p5"></span><span class="pip p6"></span></div>
             </div>
             <p class="dice-caption" id="dice-caption">Big adventures start with a small roll.</p>
-            <button id="roll" class="primary-button roll-button" disabled><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg><span id="roll-label">Roll the dice</span><svg class="icon roll-arrow" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+            <button id="roll" class="primary-button roll-button" disabled><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg><span id="roll-label">Roll the dice</span><svg class="icon menu-arrow" aria-hidden="true"><use href="#i-arrow"/></svg></button>
             <p class="keyboard-hint">or press <kbd>Space</kbd> to roll</p>
           </section>
           <section class="activity-panel" aria-labelledby="activity-title">
@@ -147,7 +147,7 @@
           </section>
         </aside>
       </div>
-      <footer class="site-footer"><span class="save-indicator"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span id="save-status">Your progress is saved automatically</span></span><span class="footer-rule">First to 100 · Exact roll to win</span></footer>
+      <footer class="site-footer"><span class="save-indicator"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span id="save-status">Your progress is saved automatically</span></span></footer>
       <noscript><p class="noscript-message">Please enable JavaScript to play Snakes &amp; Ladders.</p></noscript>
     </main>
     <div class="sheet-scrim" id="players-sheet-scrim" aria-hidden="true"></div>
@@ -173,9 +173,8 @@
     <section id="start-menu" class="start-menu" role="dialog" aria-modal="true" aria-labelledby="start-menu-title" hidden>
       <h2 class="sr-only" id="start-menu-title">Game menu</h2>
       <div class="menu-panel">
-
         <div class="menu-view is-main" data-view="main">
-          <span class="menu-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/></svg></span>
+          <span class="menu-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/><path d="M16 33 11 22l9 10 8-10 6 11"/></svg></span>
           <p class="eyebrow">THE ORIGINAL BOARDS. READY TO ROLL.</p>
           <h3 class="menu-title">Snakes <span class="brand-amp">&amp;</span> Ladders</h3>
           <p class="menu-tagline">A little luck, a few ladders, and a race to square 100.</p>
@@ -193,9 +192,9 @@
           <h3 class="menu-title">How would you like to play?</h3>
           <p class="menu-tagline">Pick a mode — you can change it between games.</p>
           <div class="mode-grid">
-            <button class="mode-card" id="menu-online"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg></span><strong>Online</strong><span class="mode-card-note">Two devices, one room code</span></button>
-            <button class="mode-card" id="menu-fern"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-computer"/></svg></span><strong>With Fern</strong><span class="mode-card-note">Play the computer</span></button>
-            <button class="mode-card" id="menu-friend"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg></span><strong>With a friend</strong><span class="mode-card-note">One device, two players</span></button>
+            <button class="mode-card" id="menu-online"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg></span><strong>Online</strong><span class="mode-card-copy">Room codes and friendly rivalry</span></button>
+            <button class="mode-card" id="menu-fern"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-computer"/></svg></span><strong>With Fern</strong><span class="mode-card-copy">Play a single-player warmup</span></button>
+            <button class="mode-card" id="menu-friend"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg></span><strong>With a friend</strong><span class="mode-card-copy">Same screen, same table</span></button>
           </div>
           <div class="menu-secondary-actions">
             <button class="text-button" id="menu-continue" hidden><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Continue your saved game</span></button>
@@ -209,12 +208,12 @@
           <h3 class="menu-title">How do you want to play?</h3>
           <p class="menu-tagline">Find a quick match or create a private room for friends.</p>
           <div class="mode-grid">
-            <button class="mode-card" id="online-public"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-shuffle"/></svg></span><strong>Public</strong><span class="mode-card-note">Quick match with anyone</span></button>
-            <button class="mode-card" id="online-private"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg></span><strong>Private</strong><span class="mode-card-note">Create or join with a code</span></button>
+            <button class="mode-card" id="online-public"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-shuffle"/></svg></span><strong>Public</strong><span class="mode-card-copy">Quick match with another player</span></button>
+            <button class="mode-card" id="online-private"><span class="mode-card-icon"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg></span><strong>Private</strong><span class="mode-card-copy">Create a room with a code</span></button>
           </div>
         </div>
 
-<div class="menu-view" data-view="online" hidden>
+        <div class="menu-view" data-view="online" hidden>
           <button class="back-button" data-menu-back><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg>How to play</button>
           <p class="eyebrow">PLAY ONLINE</p>
           <h3 class="menu-title">Private room for friends.</h3>
@@ -237,12 +236,12 @@
             <button class="text-button menu-button" id="online-create-cancel"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg><span>Back</span></button>
           </div>
           <form class="online-join" id="online-join-form" novalidate>
-              <label for="online-code">Room code</label>
-              <div class="online-join-row">
-                <input id="online-code" name="code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC12" aria-describedby="online-help">
-                <button class="secondary-button" id="online-join" type="submit">Join</button>
-                <button class="secondary-button" id="online-scan" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan QR</span></button>
-              </div>
+            <label for="online-code">Room code</label>
+            <div class="online-join-row">
+              <input id="online-code" name="code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC12" aria-describedby="online-help">
+              <button class="secondary-button" id="online-join" type="submit">Join</button>
+              <button class="secondary-button" id="online-scan" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan QR</span></button>
+            </div>
             <p class="menu-tagline">Choose your color</p>
             <div class="color-picker-row" id="online-join-color-picker">
               <button type="button" class="color-swatch" data-color="blue" style="background:blue" aria-label="Blue"></button>
@@ -253,10 +252,7 @@
               <button type="button" class="color-swatch" data-color="black" style="background:black" aria-label="Black"></button>
             </div>
             <input type="hidden" id="online-join-color" value="blue">
-            </form>
-          </div>
-          <p class="online-message" id="online-message" role="status" aria-live="polite">Rooms are shared through this game's own server. The first player rolls first.</p>
-          <p class="sr-only" id="online-help">Room codes are five letters and numbers, shown to whoever creates the room.</p>
+          </form>
         </div>
 
         <div class="menu-view" data-view="queue" hidden>
@@ -271,7 +267,7 @@
           <button class="text-button menu-button" id="queue-cancel">Cancel search</button>
         </div>
 
-<div class="menu-view" data-view="room" hidden>
+        <div class="menu-view" data-view="room" hidden>
           <p class="eyebrow">ONLINE ROOM</p>
           <h3 class="menu-title">Room <span class="room-code" id="room-code">-----</span></h3>
           <p class="menu-tagline" id="room-status">Waiting for another player to join…</p>
@@ -310,76 +306,41 @@
           <h3 class="menu-title">Make it your table.</h3>
           <div class="settings-list">
             <button class="setting-row" id="setting-sound" aria-pressed="false"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-muted"/></svg></span><span class="setting-text"><strong>Sound</strong><span id="setting-sound-value">Off</span></span></button>
-            <button class="setting-row" id="setting-pace" aria-pressed="false"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><span class="setting-text"><strong>Quick pace</strong><span id="setting-pace-value">Take it easy</span></span></button>
-            <button class="setting-row" id="setting-view" aria-pressed="false"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-tilt"/></svg></span><span class="setting-text"><strong>3D view</strong><span id="setting-view-value">Flat board</span></span></button>
-            <button class="setting-row" id="setting-board"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg></span><span class="setting-text"><strong>Board</strong><span id="setting-board-value">The Greenhouse</span></span><svg class="icon setting-arrow" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-            <button class="setting-row" id="setting-names"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg></span><span class="setting-text"><strong>Players &amp; names</strong><span id="setting-names-value">Player 1 and Player 2</span></span><svg class="icon setting-arrow" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+            <button class="setting-row" id="setting-pace" aria-pressed="false"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><span class="setting-text"><strong>Turn pace</strong><span id="setting-pace-value">Take it easy</span></span></button>
+            <button class="setting-row" id="setting-view" aria-pressed="false"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-tilt"/></svg></span><span class="setting-text"><strong>Board view</strong><span id="setting-view-value">Tilted 3D board</span></span></button>
+            <button class="setting-row" id="setting-board"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg></span><span class="setting-text"><strong>Board</strong><span id="setting-board-value">The Greenhouse</span></span></button>
+            <button class="setting-row" id="setting-names"><span class="setting-icon"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg></span><span class="setting-text"><strong>Players</strong><span id="setting-names-value">Player 1 and Player 2</span></span></button>
           </div>
           <p class="online-message" id="settings-message" role="status" aria-live="polite"></p>
         </div>
 
         <div class="menu-view" data-view="exit" hidden>
-          <span class="menu-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/></svg></span>
+          <span class="menu-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 33h17a6 6 0 0 0 0-12H18a6 6 0 0 1 0-12h11"/><path d="M30 9h5m-2-3 3 3-3 3"/><circle cx="28" cy="9" r="4"/><path d="M16 33 11 22l9 10 8-10 6 11"/></svg></span>
           <h3 class="menu-title">Thanks for playing.</h3>
           <p class="menu-tagline">Your board will be waiting. Close this tab whenever you like — or come straight back.</p>
           <button class="secondary-button menu-button" id="exit-back"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg><span>Back to the menu</span></button>
-        </div>
-
-<div class="menu-view" data-view="auth" hidden>
-          <button class="back-button" data-menu-back><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg>Back</button>
-          <p class="eyebrow">ACCOUNT</p>
-          <h3 class="menu-title">Sign in to play online</h3>
-          <p class="menu-tagline">Your rooms and progress sync across devices.</p>
-          <div id="auth-login-view">
-            <form id="auth-login-form" novalidate>
-              <div class="name-fields">
-                <label>Username<input id="auth-login-username" name="username" type="text" maxlength="16" autocomplete="username" required></label>
-                <label>Password<input id="auth-login-password" name="password" type="password" autocomplete="current-password" required></label>
-              </div>
-              <p class="dialog-error" id="auth-login-error" role="alert" aria-live="polite"></p>
-              <div class="dialog-actions">
-                <button class="primary-button full-width" id="auth-submit" type="submit">Enter arena<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-                <button class="text-button full-width" type="button" id="auth-switch-to-register">Create account instead<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-              </div>
-            </form>
-            <p class="text-button" id="auth-skip">Play as guest<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></p>
-          </div>
-          <div id="auth-register-view" hidden>
-            <form id="auth-register-form" novalidate>
-              <div class="name-fields">
-                <label>Username<input id="auth-register-username" name="username" type="text" maxlength="16" autocomplete="username" required pattern="[a-zA-Z0-9_]{2,16}" title="2-16 characters, letters, numbers, underscore only"></label>
-                <p class="form-hint">2–16 characters, letters, numbers, underscore only.</p>
-                <label>Password<input id="auth-register-password" name="password" type="password" autocomplete="new-password" required minlength="4"></label>
-              </div>
-              <p class="dialog-error" id="auth-register-error" role="alert" aria-live="polite"></p>
-              <div class="dialog-actions">
-                <button class="primary-button full-width" type="submit">Create account<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-                <button class="text-button full-width" type="button" id="auth-switch-to-login">Log in instead<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-              </div>
-            </form>
-          </div>
         </div>
       </div>
     </section>
   </div>
 
-<dialog id="rules-dialog" class="dialog rules-dialog" aria-labelledby="rules-title">
+  <dialog id="rules-dialog" class="dialog rules-dialog" aria-labelledby="rules-title">
     <button class="icon-button dialog-close" data-close-dialog aria-label="Close instructions"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     <div class="dialog-content">
       <p class="eyebrow">THE SIMPLE THINGS ARE THE BEST</p><h2 id="rules-title">A little luck. Four simple rules.</h2><p class="dialog-intro">First to square 100 gets the bragging rights.</p>
       <ol class="rules-list">
-        <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><div><h3>Roll & wander</h3><p>Both players start on square 1. Take turns rolling and moving forward. A six is just a six — no extra turn.</p></div></li>
-        <li><span class="rule-icon ladder-rule"><svg class="icon" aria-hidden="true"><use href="#i-ladder"/></svg></span><div><h3>Enjoy the little climbs</h3><p>Land at the foot of a ladder and go straight to the top. A lucky shortcut!</p></div></li>
-        <li><span class="rule-icon snake-rule"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg></span><div><h3>Take the slides in stride</h3><p>Slide to the tail, or solve a haiku to stay on the head. Fern always takes the classic slide.</p></div></li>
-        <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg></span><div><h3>Finish just right</h3><p>You need an exact roll to reach 100. Roll too high? Stay put and try on your next turn.</p></div></li>
+        <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-dice"/></svg></span><div><h3>Roll &amp; wander</h3><p>Both players start on square 1. Take turns rolling and moving.</p></div></li>
+        <li><span class="rule-icon ladder-rule"><svg class="icon" aria-hidden="true"><use href="#i-ladder"/></svg></span><div><h3>Enjoy the little climbs</h3><p>Land at the foot of a ladder and get a lift to the top.</p></div></li>
+        <li><span class="rule-icon snake-rule"><svg class="icon" aria-hidden="true"><use href="#i-snake"/></svg></span><div><h3>Take the slides in stride</h3><p>Slide to the tail, or solve a haiku riddle to stay on the head.</p></div></li>
+        <li><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg></span><div><h3>Finish just right</h3><p>You need an exact roll to reach 100. Roll too high and you stay put.</p></div></li>
       </ol><button class="primary-button full-width" data-close-dialog>Got it. Let's roll.<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
     </div>
   </dialog>
 
-<dialog id="boards-dialog" class="dialog boards-dialog" aria-labelledby="boards-title">
+  <dialog id="boards-dialog" class="dialog boards-dialog" aria-labelledby="boards-title">
     <button class="icon-button dialog-close" data-close-dialog aria-label="Close board chooser"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     <div class="dialog-content">
-      <p class="eyebrow">YOUR 20 ORIGINAL BOARDS</p><div class="boards-dialog-heading"><div><h2 id="boards-title">Choose your board.</h2><p class="dialog-intro">The actual pictures, with the original snake and ladder tracking.</p></div><button class="small-button" id="shuffle-board"><svg class="icon" aria-hidden="true"><use href="#i-shuffle"/></svg>Surprise me</button></div>
+      <p class="eyebrow">YOUR 20 ORIGINAL BOARDS</p><div class="boards-dialog-heading"><div><h2 id="boards-title">Choose your board.</h2><p class="dialog-intro">The actual pictures, with the original route maps.</p></div></div>
       <div class="board-picker-grid" id="board-picker" role="group" aria-label="Choose one of 20 boards"></div>
       <nav class="board-pagination" aria-label="Board preview pages">
         <button class="small-button" id="previous-boards" aria-label="Previous four boards"><svg class="icon arrow-back" aria-hidden="true"><use href="#i-arrow"/></svg>Previous</button>
@@ -390,21 +351,21 @@
     </div>
   </dialog>
 
-<dialog id="setup-dialog" class="dialog setup-dialog" aria-labelledby="setup-title">
+  <dialog id="setup-dialog" class="dialog setup-dialog" aria-labelledby="setup-title">
     <button class="icon-button dialog-close" data-close-dialog aria-label="Close game setup"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     <div class="dialog-content">
       <p class="eyebrow">A FRESH START</p><h2 id="setup-title">Make it your game.</h2><p class="dialog-intro">Find a friend. Or make a new one.</p>
       <form id="setup-form">
-        <fieldset class="mode-options"><legend>Who's playing?</legend><label class="mode-option"><input type="radio" name="mode" value="local" checked><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg><strong>With a friend</strong><span>Two players, one device</span></label><label class="mode-option"><input type="radio" name="mode" value="computer"><svg class="icon" aria-hidden="true"><use href="#i-computer"/></svg><strong>Meet Fern</strong><span>Your computer companion</span></label></fieldset>
+        <fieldset class="mode-options"><legend>Who's playing?</legend><label class="mode-option"><input type="radio" name="mode" value="local" checked><svg class="icon" aria-hidden="true"><use href="#i-players"/></svg><span>Local</span></label><label class="mode-option"><input type="radio" name="mode" value="computer"><svg class="icon" aria-hidden="true"><use href="#i-computer"/></svg><span>Fern</span></label></fieldset>
         <div class="name-fields"><label>Your name<input id="player-one-name" name="player1" maxlength="24" placeholder="Player 1" autocomplete="off"></label><label id="player-two-label"><span>Friend's name</span><input id="player-two-name" name="player2" maxlength="24" placeholder="Player 2" autocomplete="off"></label></div>
-        <fieldset class="speed-options"><legend>A pace that suits you</legend><label><input type="radio" name="speed" value="normal" checked><span>Take it easy</span></label><label><input type="radio" name="speed" value="quick"><span>Quick & breezy</span></label></fieldset>
+        <fieldset class="speed-options"><legend>A pace that suits you</legend><label><input type="radio" name="speed" value="normal" checked><span>Take it easy</span></label><label><input type="radio" name="speed" value="quick"><span>Quick &amp; breezy</span></label></fieldset>
         <p class="setup-note" id="setup-note">You'll play on The Greenhouse. Your current game will be replaced.</p>
         <div class="dialog-actions"><button class="secondary-button" type="button" data-close-dialog>Not yet</button><button class="primary-button" type="submit">Start playing<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
       </form>
     </div>
   </dialog>
 
-<dialog id="snake-dialog" class="dialog snake-dialog" aria-labelledby="snake-choice-title">
+  <dialog id="snake-dialog" class="dialog snake-dialog" aria-labelledby="snake-choice-title">
     <button class="icon-button dialog-close" id="snake-close" aria-label="Take the classic snake slide"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     <div class="dialog-content">
       <div id="snake-choice-view">
@@ -424,7 +385,7 @@
         <pre class="snake-haiku" id="snake-haiku" aria-label="Riddle in haiku form"></pre>
         <form class="snake-riddle-form" id="snake-riddle-form">
           <label for="snake-riddle-answer">Your answer</label>
-          <div class="snake-riddle-answer-row"><input id="snake-riddle-answer" name="answer" maxlength="60" autocomplete="off" required><button class="primary-button" id="snake-riddle-submit" type="submit">Answer</button></div>
+          <div class="snake-riddle-answer-row"><input id="snake-riddle-answer" name="answer" maxlength="60" autocomplete="off" required><button class="primary-button" id="snake-riddle-submit" type="submit">Check</button></div>
         </form>
         <p class="snake-riddle-feedback" id="snake-riddle-feedback" role="status" aria-live="polite"></p>
         <button class="text-button snake-riddle-skip" id="snake-riddle-skip">Skip and take the slide</button>
@@ -437,8 +398,8 @@
     <div class="dialog-content">
       <div class="winner-trophy" aria-hidden="true"><svg class="icon"><use href="#i-trophy"/></svg><span class="trophy-spark spark-one"><svg class="icon"><use href="#i-sparkle"/></svg></span><span class="trophy-spark spark-two"><svg class="icon"><use href="#i-sparkle"/></svg></span></div>
       <p class="eyebrow">A CLIMB WORTH CELEBRATING</p><h2 id="win-title"><span id="winner-name">Player 1</span> wins!</h2><p class="dialog-intro">A few ups, a few downs, and one lovely finish.</p>
-      <div class="winner-stats"><div><strong id="winner-rolls">0</strong><span>rolls</span></div><div><strong id="winner-climbs">0</strong><span>ladders climbed</span></div><div><strong id="winner-slides">0</strong><span>snakes survived</span></div></div>
-      <button class="primary-button full-width" id="play-again"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>One more adventure</button><button class="text-button another-board-button" id="winner-change-board">Try a different board<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      <div class="winner-stats"><div><strong id="winner-rolls">0</strong><span>rolls</span></div><div><strong id="winner-climbs">0</strong><span>ladders climbed</span></div><div><strong id="winner-slides">0</strong><span>snake slides</span></div></div>
+      <button class="primary-button full-width" id="play-again"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>One more adventure</button><button class="text-button another-board" id="winner-change-board">Choose a different board</button>
     </div>
   </dialog>
   <div id="confetti" class="confetti" aria-hidden="true"></div>
@@ -469,7 +430,7 @@
         <p class="dialog-intro">Pick a username and password to save your rooms.</p>
         <form id="auth-register-form" novalidate>
           <div class="name-fields">
-            <label>Username<input id="auth-register-username" name="username" type="text" maxlength="16" autocomplete="username" required pattern="[a-zA-Z0-9_]{2,16}" title="2-16 characters, letters, numbers, underscore only"></label>
+            <label>Username<input id="auth-register-username" name="username" type="text" maxlength="16" autocomplete="username" required pattern="[a-zA-Z0-9_]{2,16}" title="2-16 characters, letters, numbers, underscore only."></label>
             <p class="form-hint">2–16 characters, letters, numbers, underscore only.</p>
             <label>Password<input id="auth-register-password" name="password" type="password" autocomplete="new-password" required minlength="4"></label>
           </div>
